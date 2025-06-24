@@ -13,6 +13,7 @@ The application provides the following features:
 - Update the graphical view after making edits
 - Save modified JSON files back to the server
 
+
 ## 🛠️ Technologies & Stack
 - **React 19** – Core framework for building the user interface  
 - **TypeScript** – Strongly-typed JavaScript for reliability and maintainability  
@@ -25,4 +26,23 @@ The application provides the following features:
 - **Jest & Testing Library** – Unit and component testing for robust code  
 - **web-vitals** – Monitoring and measuring app performance
 
+## ⚡️ Getting Started
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/yourusername/repo-name.git
+    ```
+2. Install dependencies:
+    ```bash
+    npm install
+    ```
+3. Run the app:
+    ```bash
+    npm start
+    ```
+4. Build for production:
+    ```bash
+    npm run build
+    ```
 
+## 👥 Contributing
+Contributions, ideas, and feedback are very welcome! Feel free to open an issue or create a pull request.
