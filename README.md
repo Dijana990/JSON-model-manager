@@ -13,8 +13,16 @@ The application provides the following features:
 - Update the graphical view after making edits
 - Save modified JSON files back to the server
 
+## 🛠️ Technologies & Stack
+- **React 19** – Core framework for building the user interface  
+- **TypeScript** – Strongly-typed JavaScript for reliability and maintainability  
+- **React DOM** – Enables rendering React components in the browser  
+- **React Router DOM** – Client-side routing for seamless navigation  
+- **Sass / SCSS** – Styles and preprocessing for a clean, maintainable design  
+- **Axios** – HTTP client for data requests  
+- **Three.js** – 3D rendering and interactive graphics  
+- **Vanta.js** – Animated 3D backgrounds for a dynamic user experience  
+- **Jest & Testing Library** – Unit and component testing for robust code  
+- **web-vitals** – Monitoring and measuring app performance
 
-## 🛠️ Technologies
-- **React** + **Reagraph** (for graphical editing)  
-- JSON structured data  
 
