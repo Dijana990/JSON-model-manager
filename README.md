@@ -29,7 +29,7 @@ The application provides the following features:
 ## ⚡️ Getting Started
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/repo-name.git
+    git clone https://github.com/Dijana990/JSON-model-manager.git
     ```
 2. Install dependencies:
     ```bash
