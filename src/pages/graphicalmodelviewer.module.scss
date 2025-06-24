@@ -1,0 +1,165 @@
+.container {
+  display: flex;
+  height: 100vh;
+  
+}
+
+.view {
+  flex: 1;
+  padding: 2rem;
+
+  h2 {
+    margin-top: -0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* buttoni za izbor modela */
+  .buttonGroup {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    button {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      background-color: #f9b90e;
+      border: 2px solid #f9b90e;
+      color: black;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+      border-radius: 0.5rem;
+
+      &:hover {
+        background-color: #5B88B2;
+        border-color: #5B88B2;
+        color: black;
+      }
+    }
+  }
+}
+
+.toolbox {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 350px;
+  border-left: 1px solid #ccc;
+  padding: 1rem;
+  overflow-y: auto;
+  z-index: 10;
+
+  h3 {
+    margin-top: 0;
+    text-align: center;
+  }
+
+  & > div {
+    margin-bottom: 1rem;
+
+    label {
+      display: block;
+      font-size: 0.875rem;   
+      margin-bottom: 0.25rem;
+      color: black;
+    }
+
+    input[type="text"],
+    select {
+      width: 95%;
+      padding: 0.5rem;
+      background-color: white;   
+      border: 1px solid #f9b90e;    
+      border-radius: 0.5rem;        
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+      outline: none;
+
+      &:focus {
+        background-color: white;  
+        border-color: #5B88B2;      
+      }
+    }
+  }
+
+  .section {
+    margin-bottom: 1rem;
+
+    h4{
+      font-size: 15px;
+      font-weight: normal;
+    }
+
+   table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #f9b90e;
+
+    th,
+    td {
+    border: 1px solid #f9b90e;
+    padding: 0.4rem;
+    text-align: left;
+    font-size: small;
+    }
+  }
+
+
+    button {
+      padding: 0.3rem 0.6rem;
+      margin-top: 0.3rem;
+    }
+  }
+  .addRowButton {
+    display: block;
+    margin: 0.5rem 0 0 auto;
+    padding: 0.25rem 0.75rem;
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+    background-color: #f9b90e;
+    border: 1px solid #fbc02d;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #5B88B2;
+      border-color: #5B88B2;
+    }
+  }
+  .save {
+    margin-top: 1rem;
+    background-color: #f9b90e;
+    border: 2px solid #f9b90e;
+    border-radius: 6px;
+    color: black;
+    border: none;
+    padding: 0.5rem;
+    width: 100%;
+    cursor: pointer;
+
+    &:hover {
+        background-color: #5B88B2;
+        border-color: #5B88B2;
+      }
+  }
+   .backButton {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0 0;
+
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 12px;
+      font-weight: bold;
+      color: #000;
+      background-color: #f9b90e;
+      border: 2px solid #f9b90e;
+      border-radius: 6px;
+      cursor: pointer;
+
+      &:hover {
+        background-color: #5B88B2;
+        border-color: #5B88B2;
+      }
+    }
+  }
+}
