@@ -1,3 +1,13 @@
+/**
+ * Priprema grafa za prikaz u Reagraph komponenti.
+ *
+ * Ova datoteka sadrži funkcije koje obogaćuju (enrich) čvorove u grafu tako da:
+ * - Dodjeljuju tip (`type`) čvorovima ako nije unaprijed definiran
+ * - Dodaju odgovarajuću ikonu (`icon`) na temelju tipa ili prepoznatljivih obrazaca u ID-ju/ikoni
+ *
+ * Cilj je osigurati da svi čvorovi imaju konzistentne atribute za ispravno i jasno vizualno prikazivanje u sučelju.
+ */
+
 import type { EdgeType, NodeType } from '../types';
 import { iconMap } from './graphUtils';
 

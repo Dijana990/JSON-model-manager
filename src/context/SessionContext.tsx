@@ -1,13 +1,19 @@
 /**
  * SessionContext
  *
- * Ovaj kontekst služi za centralno upravljanje grafom unutar React aplikacije.
- * Omogućuje dijeljenje podataka o čvorovima i rubovima (`graphData`)
- * između različitih komponenti bez potrebe za prop-drillingom.
+ * Globalni React kontekst koji omogućuje centralizirano upravljanje stanjem grafa (čvorovi i rubovi)
+ * unutar cijele aplikacije. Koristi se za dijeljenje grafa između više komponenti bez potrebe
+ * za prosljeđivanjem propsa (prop-drilling).
  *
- * U kombinaciji s `useGraph` hookom, omogućuje dodavanje, ažuriranje i dohvaćanje grafa
- * na jednostavan i konzistentan način.
+ * Kombiniranjem s `useGraph` hookom omogućuje:
+ * - Dohvaćanje trenutnog grafa
+ * - Ažuriranje grafa iz bilo koje komponente
+ * - Korištenje undo/redo funkcionalnosti (u sklopu `useGraph`)
+ *
+ * Ovaj kontekst mora obuhvaćati sve dijelove aplikacije koji trebaju pristup grafu,
+ * koristeći `SessionProvider` komponentu.
  */
+
 import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
 import type { GraphData } from '../types';

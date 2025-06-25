@@ -1,14 +1,20 @@
 /**
  * Custom hook: useLocalStorage
  *
- * Ovaj hook omogućuje trajno spremanje i dohvaćanje vrijednosti iz localStorage-a
- * koristeći React-ov `useState` i `useEffect`.
+ * React hook koji omogućuje trajno spremanje i dohvaćanje stanja putem `localStorage` mehanizma preglednika.
+ * Implementiran je pomoću `useState` i `useEffect`, te vraća identičan API kao `useState`,
+ * uz dodatnu funkcionalnost automatskog spremanja podataka.
  *
- * Namijenjen je komponentama koje žele zadržati stanje i nakon osvježavanja stranice.
- * Npr. korisnički odabiri, prikazani elementi, postavke, itd.
+ * Glavne značajke:
+ * - Čuva podatke i nakon osvježavanja stranice
+ * - Automatski sinkronizira stanje s `localStorage`
+ * - Pogodno za korisničke postavke, prikazne opcije, filtere, itd.
  *
- * Hook vraća identičan API kao `useState`, ali s dodatnim efektom čuvanja podataka u localStorage.
+ * @param key - Jedinstveni ključ pod kojim se vrijednost sprema u `localStorage`
+ * @param initialValue - Početna vrijednost ako u `localStorage` ne postoji nijedna
+ * @returns [storedValue, setStoredValue] - Trenutna vrijednost i funkcija za ažuriranje
  */
+
 import { useState, useEffect } from 'react';
 
 /**

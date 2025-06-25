@@ -1,8 +1,16 @@
 /**
- * Alati za obradu grafa prije prikaza u Reagraph komponenti.
- * Ove funkcije omogućuju dodavanje koordinata čvorovima, transformaciju rubova i
- * rad s virtualnim ili složenim vezama. Također se brinu za vizualne detalje poput boje grupa i ikona.
+ * Pomoćne funkcije i tipovi za pripremu i manipulaciju grafom u web aplikaciji.
+ *
+ * Ova datoteka sadrži:
+ * - Tipove koji omogućuju rad s rubovima koji koriste reference na čvorove (za Reagraph)
+ * - Funkcije za izračun layouta pomoću ForceAtlas2 algoritma
+ * - Alate za pomicanje čvorova i vizualne prilagodbe (boje, ikone)
+ * - Funkcionalnosti za pojednostavljenje grafa i rad s koordinatama
+ *
+ * Glavni cilj je pripremiti podatke u obliku koji očekuje Reagraph komponenta,
+ * te omogućiti dodatne manipulacije poput pozicioniranja ili grupiranja čvorova.
  */
+
 import Graph from 'graphology';
 import forceAtlas2 from 'graphology-layout-forceatlas2';
 import type { GraphData, NodeType, EdgeType } from '../types';

@@ -1,3 +1,15 @@
+/**
+ * Pomoćne funkcije za stilizaciju i označavanje bridova u grafu.
+ *
+ * - `getEdgeStyle`: definira stil bridova na temelju tipa čvorova ili njihovih ikona.
+ *   Koristi se za vizualno razlikovanje vrsta veza (npr. korisnik ↔ računalo, računalo ↔ softver).
+ *
+ * - `getEdgeLabel`: vraća oznaku (labelu) bridova ovisno o tipu izvorišnog i odredišnog čvora.
+ *
+ * Ove funkcije se koriste u komponenti grafa (npr. Reagraph) za prikaz dodatnih
+ * informacija i razlikovanje bridova u vizualizaciji modela IT sustava.
+ */
+
 import type { ResolvedEdge } from './graphUtils';
 import type { EdgeType, NodeType } from '../types';
 

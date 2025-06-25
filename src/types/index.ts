@@ -1,3 +1,15 @@
+/**
+ * index.ts (types)
+ * ---------------------
+ * Sadrži sve ključne TypeScript tipove korištene u aplikaciji:
+ * - NodeType: opisuje čvorove u grafu (računala, softver, mreže, korisnici, servisi itd.)
+ * - EdgeType: opisuje veze između čvorova s podrškom za različite tipove odnosa
+ * - GraphData: struktura s listom čvorova i veza (graf)
+ * - FileWrapper & FileItem: koriste se za rad s JSON datotekama (upload, prikaz, obrada)
+ *
+ * Tipovi su osnova za statičku provjeru i rad s podacima unutar grafičkog editora.
+ */
+
 export type NodeType = {
   id: string;
   label: string;
@@ -22,14 +34,14 @@ export type EdgeType = {
   source: string;
   target: string;
   label?: string;
-  type?: 
-    | 'computer-software'
-    | 'software-service'
-    | 'software-user-service'
-    | 'computer-person'
-    | 'network-software'
-    | 'network-computer'
-    | string;
+  type?:
+  | 'computer-software'
+  | 'software-service'
+  | 'software-user-service'
+  | 'computer-person'
+  | 'network-software'
+  | 'network-computer'
+  | string;
 };
 
 export type GraphData = {
@@ -45,4 +57,12 @@ export type FileWrapper = {
   fileObject: File;
 };
 
-export type FileItem = File | { name: string; content: string } | { name: string; size: string; date: string; timestamp: number; fileObject: File };
+export type FileItem = File | { 
+  name: string; content: string } | { name: string; size: string; date: string; timestamp: number; fileObject: File };
+
+export enum GraphViewMode {
+  Landscape = 'landscape',
+  DataServices = 'dataservices',
+  Firewalls = 'firewalls',
+  Credentials = 'credentials'
+};

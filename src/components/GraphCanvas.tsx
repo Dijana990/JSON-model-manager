@@ -1,6 +1,38 @@
-// Glavna React komponenta za prikaz grafa koristeći Reagraph vizualizaciju.
-// Omogućuje filtriranje čvorova po grupi i tipu, dinamičko generiranje virtualnih veza,
-// te interakciju (hover, klik) nad čvorovima i pomicanje susjednih čvorova.
+/**
+ * GraphCanvas.tsx
+ *
+ * Glavna komponenta za prikaz i interakciju s grafom modeliranog IT sustava korištenjem Reagraph biblioteke.
+ * Omogućuje korisniku filtriranje čvorova po grupi i tipu, prikaz virtualnih veza na temelju konteksta
+ * te uređivanje podataka o čvorovima (posebno računalima) putem bočnog panela.
+ *
+ * Ključne funkcionalnosti:
+ * - Prikaz grafa temeljen na ForceAtlas2 rasporedu
+ * - Filtriranje čvorova po grupi (dropdown) i tipu (checkbox)
+ * - Automatsko dodavanje virtualnih rubova ovisno o kontekstu selektiranih tipova
+ * - Prikaz dodatnih informacija o čvorovima prilikom hovera i klika
+ * - Uređivanje računala preko `ComputerEditorPanel` komponente (izmjena naziva, mreže, softvera)
+ * - Pomicanje susjednih čvorova u 4 smjera oko odabranog računala
+ * - Izvoz izmijenjenog grafa kao JSON datoteke
+ *
+ * Props:
+ * - `data`: izvorni graf podataka (čvorovi i rubovi)
+ * - `onNodeClick`: opcionalni callback koji se poziva pri kliku na čvor
+ *
+ * Interna stanja:
+ * - `layoutedData`: trenutno prikazani graf s layout pozicijama
+ * - `selectedGroup`, `selectedTypes`: aktivni filteri
+ * - `selectedNode`, `hoveredNode`: za prikaz detalja i interakciju
+ * - `selectedComputerId`: posebno se koristi za prikaz kontrola pomicanja
+ *
+ * TODO:
+ * - Integrirati undo/redo mehanizam pri promjenama grafa
+ * - Razdvojiti logiku za virtualne rubove u posebnu funkciju ili modul
+ * - Dodati uređivanje i drugih tipova čvorova (npr. user, service)
+ * - Povezati s globalnim stanjem grafa (ako aplikacija bude koristila centraliziranu pohranu)
+ */
+
+
+
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { GraphCanvas } from 'reagraph';
 import type { GraphData, NodeType, EdgeType } from '../types';

@@ -1,3 +1,7 @@
+/**
+ * Sloj za pohranu JSON podataka u localStorage.
+ * Koristi se za privremeno spremanje izmijenjenih podataka iz grafa.
+ */
 export const LocalStorageLayer = {
   saveJSON: (key: string, data: object) => {
     try {

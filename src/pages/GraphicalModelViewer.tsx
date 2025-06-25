@@ -1,3 +1,25 @@
+/**
+ * GraphicalModelViewer.tsx
+ *
+ * Glavna stranica za vizualizaciju modeliranih IT sustava.
+ * - Omogućuje učitavanje više JSON datoteka i spajanje njihovih podataka u jedan graf.
+ * - Parsira i konvertira JSON u prikladan format (`GraphData`) za prikaz u Reagraph komponenti.
+ * - Prikazuje korisničko sučelje s navigacijskim gumbima i Reagraph platnom.
+ * - Kompatibilna s datotekama tipa `File`, `FileItem` i `string` sadržajima.
+ *
+ * Ova komponenta je rezultat integracije dva projekta — originalnog JSON-parsing prikaza
+ * i novog vizualnog editora temeljenog na Reagraph-u.
+ */
+
+// TODO:
+// - Implementirati undo/redo funkcionalnost unutar prikaza grafa (moguće pomoću `useGraph` hooka).
+// - Dodati gumb za spremanje izmijenjenog grafa u JSON (npr. kao preuzimanje fajla ili spremanje u localStorage).
+// - Povezati stanje prikazanog grafa sa spremištem izmjena (za razliku između originalnog i modificiranog).
+// - Podesiti layout gumba (Landscape, Credentials itd.) ako budu povezani s filtrima grafa.
+// - Razmisliti treba li GraphicalModelViewer ostati kao posredna komponenta ili se preusmjeravanje može pojednostaviti.
+
+
+
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import styles from "./graphicalmodelviewer.module.scss";

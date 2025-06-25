@@ -1,3 +1,29 @@
+/**
+ * JsonFileTable.tsx
+ *
+ * Komponenta za upravljanje JSON datotekama unutar aplikacije.
+ * - Omogućuje upload više `.json` datoteka (s podrškom za višestruki unos)
+ * - Prikazuje tablicu s nazivima, veličinom i datumom svakog fajla
+ * - Omogućuje sortiranje po nazivu i datumu
+ * - Podržava uređivanje pojedinačne datoteke (✏️ otvara `/viewer`)
+ * - Podržava preuzimanje originalne i potencijalno izmijenjene verzije fajla
+ * - Gumb "Prikaži sve u grafu" šalje sve učitane fajlove na `GraphicalModelViewer`
+ *
+ * Koristi `useSession` kako bi postavio `graphData` kod pojedinačnog editiranja.
+ *
+ * Ova komponenta je glavni ulaz za učitavanje i upravljanje fajlovima u aplikaciji.
+ */
+
+// TODO:
+// - Povezati funkciju "Download Modified" s lokalno spremljenim izmjenama grafa.
+// - Po potrebi omogućiti korisniku preimenovanje fajla prije preuzimanja izmijenjene verzije.
+// - Razmotriti spremanje izmijenjenih grafa u localStorage (npr. preko `LocalStorageLayer`) pod nazivom fajla.
+// - U `handleEdit`, jasno naznačiti koji je fajl glavni, a koji (ako postoji) dodatni input JSON.
+// - Ubuduće dodati poruke korisniku kad dođe do greške pri parsiranju ili ako se klikne "edit" bez validnog grafa.
+// - Razmisliti o gumbu za "Spremi izmjene" koji bi ovdje bio dostupan kao alternativni workflow (bez ulaska u `/viewer`).
+// - Ukloniti sve operacije spremanja i uređivanja koje se odnose na input JSON datoteku.
+
+
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '../context/SessionContext';

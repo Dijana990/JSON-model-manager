@@ -1,3 +1,27 @@
+/**
+ * ComputerEditorPanel.tsx
+ *
+ * Vizualna komponenta za uređivanje podataka o čvorovima tipa "computer".
+ * Omogućuje korisniku da izmijeni naziv računala, mrežu kojoj pripada i popis instaliranog softvera.
+ *
+ * Funkcionalnosti:
+ * - Automatski dohvaća i prikazuje postojeće vrijednosti iz odabranog `NodeType` čvora.
+ * - Omogućuje uređivanje naziva (`label`) i pripadnosti mreži (na temelju `network_ids`).
+ * - Prikazuje i omogućuje uređivanje popisa softvera (`software`).
+ * - Emitira ažurirani čvor pomoću `onSave` callbacka.
+ *
+ * Props:
+ * - `node`: trenutno odabrani čvor koji se uređuje (mora biti tipa `computer`)
+ * - `availableNetworks`: lista dostupnih mreža za odabir
+ * - `onSave`: callback funkcija koja prima ažurirani čvor i pohranjuje ga
+ * - `onCancel`: callback za zatvaranje panela bez spremanja promjena
+ *
+ * TODO:
+ * - Dodati validaciju unosa (npr. mreža mora biti odabrana, softveri ne smiju biti prazni).
+ * - Omogućiti dodavanje više mreža ako model bude to podržavao (`network_ids` kao array).
+ */
+
+
 import React, { useState, useEffect } from 'react';
 import type { NodeType } from '../types';
 

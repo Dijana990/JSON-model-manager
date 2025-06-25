@@ -5,7 +5,7 @@ import DashboardPage from './pages/dashboardPage'
 import GraphicalModelViewer from './pages/GraphicalModelViewer'
 import styles from './components/loginform.module.scss'
 // @ts-ignore
-import NET from 'vanta/dist/vanta.net.min'
+import NET from "vanta/dist/vanta.net.min";
 import * as THREE from 'three'
 
 function App() {

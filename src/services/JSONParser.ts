@@ -1,3 +1,11 @@
+/**
+ * JSONParser.ts
+ * ---------------------
+ * Sadrži funkciju `parseJSONToGraph` koja pretvara ulazne JSON datoteke
+ * u strukturirani graf (čvorovi i veze) za prikaz i uređivanje u grafičkom sučelju.
+ * Uključuje pomoćne funkcije za prepoznavanje softvera, korisnika, mreža i servisa.
+ * Ključno za pretvaranje modeliranih IT sustava u vizualnu mrežu.
+ */
 import type { GraphData, NodeType, EdgeType } from '../types';
 
 function getCustomerLabel(binaryLabel: string): string {

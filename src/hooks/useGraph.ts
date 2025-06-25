@@ -1,12 +1,19 @@
 /**
- * Custom hook: useGraph
+ * Hook: useGraph
  *
- * Ovaj hook služi kao pomoćna apstrakcija za manipulaciju podacima grafa unutar aplikacije.
- * Koristi podatke iz globalnog konteksta `SessionContext` (putem useSession hooka),
- * te omogućuje dodavanje i ažuriranje čvorova i rubova.
+ * Pruža centraliziran način za upravljanje stablom grafa unutar aplikacije.
+ * Koristi globalno stanje grafa iz `SessionContext` (putem `useSession` hooka),
+ * te nudi funkcije za dodavanje, ažuriranje i vraćanje (undo/redo) promjena na čvorovima i rubovima.
  *
- * Ključno: Hook centralizira sve izmjene nad grafom kako bi se izbjeglo direktno manipuliranje podacima izvan dozvoljenog konteksta.
+ * Prednosti:
+ * - Izmjene su kontrolirane i konzistentne
+ * - Omogućena je povijest promjena (undo/redo)
+ * - Sprječava izravne manipulacije stablom grafa izvan predviđenih mehanizama
+ *
+ * Namjena:
+ * Koristi se u komponentama koje trebaju čitati ili mijenjati strukturu grafa.
  */
+
 import { useSession } from '../context/SessionContext'; // pristup globalnom stanju grafa
 import { useState } from 'react';
 import type { NodeType, EdgeType, GraphData } from '../types';

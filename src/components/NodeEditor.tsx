@@ -1,3 +1,21 @@
+/**
+ * NodeEditor.tsx
+ *
+ * Komponenta za prikaz i uređivanje osnovnih atributa jednog čvora (node).
+ * Koristi se kao manji, modularni dio većih komponenti poput `Sidebar`,
+ * te omogućuje izmjenu vrijednosti kao što su labela i tip čvora.
+ *
+ * Props:
+ * - `node`: čvor koji se trenutno uređuje
+ * - `onChange`: funkcija koja prima ažurirani čvor i prosljeđuje ga natrag parent komponenti
+ *
+ * TODO:
+ * - Proširiti podršku za uređivanje dodatnih polja kao što su `group`, `icon`, `meta`.
+ * - Dodati tipizirane kontrole (npr. dropdown za `type` umjesto običnog unosa).
+ * - Implementirati validaciju unosa i mogućnost poništavanja promjena.
+ */
+
+
 import React from 'react';
 import type { NodeType } from '../types';
 
