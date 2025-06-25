@@ -1,29 +1,101 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import styles from "./graphicalmodelviewer.module.scss";
+import GraphCanvasComponent from "../components/GraphCanvas";
+import { parseJSONToGraph } from "../services/JSONParser";
+import type { GraphData, FileItem } from "../types"; // ✅ koristimo centralnu definiciju
+
+function mergeGraphs(graphs: GraphData[]): GraphData {
+  const merged: GraphData = {
+    nodes: [],
+    edges: [],
+  };
+
+  const nodeIds = new Set<string>();
+  const edgeIds = new Set<string>();
+
+  for (const graph of graphs) {
+    for (const node of graph.nodes) {
+      if (!nodeIds.has(node.id)) {
+        merged.nodes.push(node);
+        nodeIds.add(node.id);
+      }
+    }
+    for (const edge of graph.edges) {
+      if (!edgeIds.has(edge.id)) {
+        merged.edges.push(edge);
+        edgeIds.add(edge.id);
+      }
+    }
+  }
+
+  return merged;
+}
 
 export default function GraphicalModelViewer() {
-  const [showToolbox, setShowToolbox] = useState(false);
-  const [installedSoftware, setInstalledSoftware] = useState([
-    { name: "Apache HTTP Ser", version: "2.4" },
-    { name: "MySQL", version: "8.0" },
-  ]);
-
   const navigate = useNavigate();
+  const location = useLocation();
+  const files = (location.state?.files || []) as FileItem[];
 
-  const handleOpenToolbox = () => {
-    setShowToolbox(true);
-  };
-  const handleAddSoftware = () => {
-    setInstalledSoftware([
-      ...installedSoftware,
-      { name: "New Software", version: "1.0" },
-    ]);
-  };
-  const handleDeleteSoftware = (index: number) => {
-    setInstalledSoftware(installedSoftware.filter((_, i) => i !== index));
-  };
-  
+  const [graphData, setGraphData] = useState<GraphData | null>(null);
+
+  useEffect(() => {
+    const readFiles = async () => {
+      try {
+        const results = await Promise.all(
+          files.map((file) =>
+            new Promise<GraphData>((resolve, reject) => {
+              console.log("📁 Učitavam file:", file);
+              const reader = new FileReader();
+              reader.onload = () => {
+                try {
+                  const json = JSON.parse(reader.result as string);
+                  const graph = parseJSONToGraph(json, json);
+                  resolve(graph);
+                } catch (err) {
+                  console.error("Greška pri parsiranju JSON-a:", err);
+                  reject(err);
+                }
+              };
+              reader.onerror = reject;
+
+              // ⬇️ ispravno rukovanje različitim vrstama FileItem-a
+              if (file instanceof File) {
+                reader.readAsText(file);
+              } else if (
+                typeof file === "object" &&
+                "fileObject" in file &&
+                file.fileObject instanceof File
+              ) {
+                reader.readAsText(file.fileObject);
+              } else if (
+                typeof file === "object" &&
+                "content" in file &&
+                typeof file.content === "string"
+              ) {
+                reader.readAsText(new Blob([file.content]));
+              } else {
+                console.error("❌ Neispravan file objekt:", file);
+                reject(new Error("Nepoznat format file objekta"));
+              }
+            })
+          )
+        );
+
+        if (results.length > 0) {
+          const mergedGraph = mergeGraphs(results);
+          setGraphData(mergedGraph);
+        }
+      } catch (err) {
+        console.error("Greška pri učitavanju fajlova:", err);
+      }
+    };
+
+    if (files.length > 0) {
+      readFiles();
+    }
+  }, [files]);
+
   return (
     <div className={styles.container}>
       <div className={styles.view}>
@@ -33,83 +105,14 @@ export default function GraphicalModelViewer() {
           <button>Credentials</button>
           <button>Dataservices</button>
           <button>Firewalls</button>
-          <button onClick={handleOpenToolbox}>Computers</button>
+          <button onClick={() => navigate("/dashboard")}>← Natrag</button>
         </div>
       </div>
 
-      {showToolbox && (
-        <div className={styles.toolbox}>
-          <h3>ToolBox</h3>
-          
-          <div>
-            <label>Computer Name:</label>
-            <input type="text" placeholder="Enter computer name" />
-          </div>
-
-          <div>
-            <label>Connected Network:</label>
-            <select defaultValue="Network A">
-              <option>Network A</option>
-              <option>Network B</option>
-            </select>
-          </div>
-
-          <div className={styles.section}>
-            <h4>Installed Software</h4>
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Version</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {installedSoftware.map((sw, index) => (
-                  <tr key={index}>
-                    <td>{sw.name}</td>
-                    <td>{sw.version}</td>
-                    <td>
-                      <button onClick={() => handleDeleteSoftware(index)}>🗑️</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button className={styles.addRowButton} onClick={handleAddSoftware}>
-              Add row
-            </button>
-          </div>
-
-          <div className={styles.section}>
-            <h4>Data</h4>
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Logs</td>
-                  <td>Text</td>
-                  <td><button>🗑️</button></td>
-                </tr>
-              </tbody>
-            </table>
-            <button className={styles.addRowButton}>Add row</button>
-          </div>
-
-          <button className={styles.save}>Save changes</button>
-          
-          <div className={styles.backButton}>
-            <button onClick={() => navigate("/dashboard")}>
-              Back to File list
-            </button>
-          </div>
-        </div>
+      {graphData ? (
+        <GraphCanvasComponent data={graphData} />
+      ) : (
+        <p style={{ padding: "1rem" }}>Učitavanje grafa...</p>
       )}
     </div>
   );

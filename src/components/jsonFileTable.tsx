@@ -1,126 +1,140 @@
-import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import styles from './jsonfiletable.module.scss'
+import { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useSession } from '../context/SessionContext';
+import { parseJSONToGraph } from '../services/JSONParser';
+import styles from './jsonfiletable.module.scss';
 
 interface FileItem {
-  name: string
-  size: string
-  date: string
-  timestamp: number
+  name: string;
+  size: string;
+  date: string;
+  timestamp: number;
+  fileObject: File;
+  content?: string;
 }
 
-type SortField = 'name' | 'date'
-type SortDirection = 'asc' | 'desc'
+type SortField = 'name' | 'date';
+type SortDirection = 'asc' | 'desc';
 
 export default function JsonFileTable() {
-  const [files, setFiles] = useState<FileItem[]>([])
-  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null)
-  const [sortField, setSortField] = useState<SortField | null>(null)
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const navigate = useNavigate()
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
+
+  const { setGraphData } = useSession();
 
   const handleAddClick = () => {
-    fileInputRef.current?.click()
-  }
+    fileInputRef.current?.click();
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const now = new Date()
-      const newFile: FileItem = {
-        name: file.name,
-        size: `${Math.round(file.size / 1024)} KB`,
-        date: now.toLocaleDateString('hr-HR'),
-        timestamp: now.getTime()
-      }
-      setFiles((prev) => [...prev, newFile])
-    }
-  }
+    const selectedFiles = e.target.files;
+    if (!selectedFiles) return;
+
+    const now = new Date();
+    const newFiles: FileItem[] = Array.from(selectedFiles).map((file) => ({
+      name: file.name,
+      size: `${Math.round(file.size / 1024)} KB`,
+      date: now.toLocaleDateString('hr-HR'),
+      timestamp: now.getTime(),
+      fileObject: file
+    }));
+
+    setFiles((prev) => [...prev, ...newFiles]);
+  };
 
   const handleSort = (field: SortField) => {
-    const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc'
-    setSortField(field)
-    setSortDirection(newDirection)
+    const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+    setSortField(field);
+    setSortDirection(newDirection);
 
     const sortedFiles = [...files].sort((a, b) => {
-      let comparison = 0
-      
+      let comparison = 0;
+
       if (field === 'name') {
-        comparison = a.name.localeCompare(b.name)
+        comparison = a.name.localeCompare(b.name);
       } else if (field === 'date') {
-        comparison = a.timestamp - b.timestamp
+        comparison = a.timestamp - b.timestamp;
       }
 
-      return newDirection === 'asc' ? comparison : -comparison
-    })
+      return newDirection === 'asc' ? comparison : -comparison;
+    });
 
-    setFiles(sortedFiles)
-  }
+    setFiles(sortedFiles);
+  };
 
   const getSortIcon = (field: SortField) => {
-    if (sortField !== field) return '↕️'
-    return sortDirection === 'asc' ? '↑' : '↓'
-  }
+    if (sortField !== field) return '↕️';
+    return sortDirection === 'asc' ? '↑' : '↓';
+  };
 
   const handleDownload = (type: 'original' | 'modified', file: FileItem) => {
-    console.log(`Downloading ${type} version of ${file.name}`)
-    setOpenDropdownIndex(null)
-  }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (typeof event.target?.result === 'string') {
+        const blob = new Blob([event.target.result], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${type}-${file.name}`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+    };
+    reader.readAsText(file.fileObject);
+  };
 
-  const handleEdit = () => {
-    navigate('/viewer')
-  }
+  const handleEdit = async (file: FileItem) => {
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      if (typeof event.target?.result === 'string') {
+        try {
+          const mainJson = JSON.parse(event.target.result);
+          const inputJson = files.find(f => f.name.toLowerCase().includes('input'));
+          let inputParsed = null;
+
+          if (inputJson) {
+            const inputText = await inputJson.fileObject.text();
+            inputParsed = JSON.parse(inputText);
+          }
+
+          const graph = parseJSONToGraph(mainJson, inputParsed);
+          setGraphData(graph);
+          navigate('/viewer');
+        } catch (err) {
+          console.error('Greška pri parsiranju JSON-a:', err);
+        }
+      }
+    };
+    reader.readAsText(file.fileObject);
+  };
 
   const handleExit = () => {
-    navigate('/login')
-  }
+    navigate('/login');
+  };
 
   return (
     <div className={styles.pageWrapper}>
       <div className={styles.exitWrapper}>
-        <button className={styles.exitButton} onClick={handleExit}>
-          EXIT
-        </button>
+        <button className={styles.exitButton} onClick={handleExit}>EXIT</button>
       </div>
 
       <div className={styles.container}>
         <div className={styles.header}>
           <h2>Upload JSON Files</h2>
-          <button className={styles.addButton} onClick={handleAddClick}>
-            + ADD FILE
-          </button>
-          <input
-            type="file"
-            accept=".json"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            style={{ display: 'none' }}
-          />
+          <button className={styles.addButton} onClick={handleAddClick}>+ ADD FILE</button>
+          <input type="file" accept=".json" ref={fileInputRef} onChange={handleFileChange} multiple style={{ display: 'none' }} />
         </div>
 
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>
-                File name
-                <button 
-                  className={styles.sortButton} 
-                  onClick={() => handleSort('name')}
-                >
-                  {getSortIcon('name')}
-                </button>
-              </th>
+              <th>File name <button className={styles.sortButton} onClick={() => handleSort('name')}>{getSortIcon('name')}</button></th>
               <th>File size</th>
-              <th>
-                Upload date
-                <button 
-                  className={styles.sortButton} 
-                  onClick={() => handleSort('date')}
-                >
-                  {getSortIcon('date')}
-                </button>
-              </th>
+              <th>Upload date <button className={styles.sortButton} onClick={() => handleSort('date')}>{getSortIcon('date')}</button></th>
               <th>Action</th>
             </tr>
           </thead>
@@ -131,15 +145,9 @@ export default function JsonFileTable() {
                 <td>{file.size}</td>
                 <td>{file.date}</td>
                 <td className={styles.actions}>
-                  <button onClick={handleEdit}>✏️</button>
+                  <button onClick={() => handleEdit(file)}>✏️</button>
                   <div className={styles.dropdownWrapper}>
-                    <button
-                      onClick={() =>
-                        setOpenDropdownIndex(openDropdownIndex === index ? null : index)
-                      }
-                    >
-                      ⬇️
-                    </button>
+                    <button onClick={() => setOpenDropdownIndex(openDropdownIndex === index ? null : index)}>⬇️</button>
                     {openDropdownIndex === index && (
                       <div className={styles.dropdown}>
                         <button onClick={() => handleDownload('original', file)}>Download Original</button>
@@ -147,13 +155,7 @@ export default function JsonFileTable() {
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() =>
-                      setFiles((prev) => prev.filter((_, i) => i !== index))
-                    }
-                  >
-                    🗑️
-                  </button>
+                  <button onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))}>🗑️</button>
                 </td>
               </tr>
             ))}
@@ -162,6 +164,18 @@ export default function JsonFileTable() {
 
         <div className={styles.footer}>Total files: {files.length}</div>
       </div>
+      <button
+        onClick={() =>
+          navigate('/viewer', {
+            state: {
+              mode: 'all',
+              files: files.map((f) => f.fileObject),
+            },
+          })
+        }
+      >
+        Prikaži sve u grafu
+      </button>
     </div>
-  )
+  );
 }
