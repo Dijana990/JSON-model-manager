@@ -1,0 +1,199 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+  padding: 0.5rem 1.5rem; 
+  
+  h2 {
+    font-size: 30px;
+    font-weight: bold;
+    margin: 0.25rem 0 1rem 0; 
+    color: #2d3748;
+  }
+
+  .buttonGroup {
+    display: flex;
+    justify-content: left;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    button {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      background-color: #f9b90e;
+      border: 2px solid #f9b90e;
+      color: black;
+      border-radius: 0.5rem;
+      font-size: 14px;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+
+      &:hover {
+        background-color: #5B88B2;
+        border-color: #5B88B2;
+        color: black;
+      }
+    }
+
+    .backButton {
+      background-color: #5B88B2;
+      border: 2px solid #5B88B2;
+      color: black;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+  
+      &:hover {
+        background: #cb4c46;
+        border: 2px solid #cb4c46;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px gray;
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+    }
+  }
+}
+
+.view {
+  flex: 1;
+  padding: 2rem;
+}
+
+.toolbox {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 350px;
+  border-left: 1px solid #ccc;
+  padding: 1rem;
+  overflow-y: auto;
+  z-index: 10;
+
+  h3 {
+    margin-top: 0;
+    text-align: center;
+  }
+
+  & > div {
+    margin-bottom: 1rem;
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      margin-bottom: 0.25rem;
+      color: black;
+    }
+
+    input[type="text"],
+    select {
+      width: 95%;
+      padding: 0.5rem;
+      background-color: white;
+      border: 1px solid #f9b90e;
+      border-radius: 0.5rem;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+      outline: none;
+
+      &:focus {
+        background-color: white;
+        border-color: #5B88B2;
+      }
+    }
+  }
+
+  .section {
+    margin-bottom: 1rem;
+
+    h4 {
+      font-size: 15px;
+      font-weight: normal;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid #f9b90e;
+
+      th,
+      td {
+        border: 1px solid #f9b90e;
+        padding: 0.4rem;
+        text-align: left;
+        font-size: small;
+      }
+    }
+
+    button {
+      padding: 0.3rem 0.6rem;
+      margin-top: 0.3rem;
+    }
+  }
+
+  .addRowButton {
+    display: block;
+    margin: 0.5rem 0 0 auto;
+    padding: 0.25rem 0.75rem;
+    font-size: 14px;
+    font-weight: 600;
+    color: #000;
+    background-color: #f9b90e;
+    border: 1px solid #fbc02d;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #5B88B2;
+      border-color: #5B88B2;
+    }
+  }
+
+  .save {
+    margin-top: 1rem;
+    background-color: #f9b90e;
+    border: 2px solid #f9b90e;
+    border-radius: 6px;
+    color: black;
+    padding: 0.5rem;
+    width: 100%;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #5B88B2;
+      border-color: #5B88B2;
+    }
+  }
+
+  .backButton {
+    display: flex;
+    justify-content: center;
+    margin: 1rem 0 0;
+
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 12px;
+      font-weight: bold;
+      color: #000;
+      background-color: #f9b90e;
+      border: 2px solid #f9b90e;
+      border-radius: 6px;
+      cursor: pointer;
+
+      &:hover {
+        background-color: #5B88B2;
+        border-color: #5B88B2;
+      }
+    }
+  }
+}

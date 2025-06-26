@@ -37,11 +37,7 @@ The application provides the following features:
     ```
 3. Run the app:
     ```bash
-    npm start
-    ```
-4. Build for production:
-    ```bash
-    npm run build
+    npm run dev
     ```
 
 ## 👥 Contributing
