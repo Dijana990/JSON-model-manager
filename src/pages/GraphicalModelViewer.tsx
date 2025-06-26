@@ -25,7 +25,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import styles from "./graphicalmodelviewer.module.scss";
 import GraphCanvasComponent from "../components/GraphCanvas";
 import { parseJSONToGraph } from "../services/JSONParser";
-import type { GraphData, FileItem } from "../types"; // ✅ koristimo centralnu definiciju
+import { filterFirewallsGraph } from "../graphModes/firewalls"; // importiraj svoju funkciju!
+import type { GraphData, FileItem } from "../types";
 
 function mergeGraphs(graphs: GraphData[]): GraphData {
   const merged: GraphData = {
@@ -59,29 +60,36 @@ export default function GraphicalModelViewer() {
   const location = useLocation();
   const files = (location.state?.files || []) as FileItem[];
 
-  const [graphData, setGraphData] = useState<GraphData | null>(null);
+  const [mode, setMode] = useState<'landscape' | 'firewalls' | 'dataservices' | 'credentials'>('landscape');
+  const [graphs, setGraphs] = useState<{
+    landscape: GraphData | null,
+    firewalls: GraphData | null,
+    dataservices: GraphData | null,
+    credentials: GraphData | null
+  }>({
+    landscape: null,
+    firewalls: null,
+    dataservices: null,
+    credentials: null
+  });
 
   useEffect(() => {
     const readFiles = async () => {
       try {
         const results = await Promise.all(
           files.map((file) =>
-            new Promise<GraphData>((resolve, reject) => {
-              console.log("📁 Učitavam file:", file);
+            new Promise<{graph: GraphData, raw: any}>((resolve, reject) => {
               const reader = new FileReader();
               reader.onload = () => {
                 try {
                   const json = JSON.parse(reader.result as string);
                   const graph = parseJSONToGraph(json, json);
-                  resolve(graph);
+                  resolve({ graph, raw: json });
                 } catch (err) {
-                  console.error("Greška pri parsiranju JSON-a:", err);
                   reject(err);
                 }
               };
               reader.onerror = reject;
-
-              // ⬇️ ispravno rukovanje različitim vrstama FileItem-a
               if (file instanceof File) {
                 reader.readAsText(file);
               } else if (
@@ -97,7 +105,6 @@ export default function GraphicalModelViewer() {
               ) {
                 reader.readAsText(new Blob([file.content]));
               } else {
-                console.error("❌ Neispravan file objekt:", file);
                 reject(new Error("Nepoznat format file objekta"));
               }
             })
@@ -105,11 +112,19 @@ export default function GraphicalModelViewer() {
         );
 
         if (results.length > 0) {
-          const mergedGraph = mergeGraphs(results);
-          setGraphData(mergedGraph);
+          // Merge grafa i merge raw JSON-ova (za firewalls input)
+          const mergedGraph = mergeGraphs(results.map(r => r.graph));
+          const mergedRaw = results[0]?.raw; // koristi prvi raw za firewalls, ili mergeaj po potrebi
+
+          setGraphs({
+            landscape: mergedGraph,
+            firewalls: filterFirewallsGraph(mergedGraph, '', new Set(), mergedRaw),
+            dataservices: null, // Dodaj kad implementiraš
+            credentials: null   // Dodaj kad implementiraš
+          });
         }
       } catch (err) {
-        console.error("Greška pri učitavanju fajlova:", err);
+        // ...
       }
     };
 
@@ -123,16 +138,16 @@ export default function GraphicalModelViewer() {
       <div className={styles.view}>
         <h2>Graphical Model View</h2>
         <div className={styles.buttonGroup}>
-          <button>Landscape</button>
-          <button>Credentials</button>
-          <button>Dataservices</button>
-          <button>Firewalls</button>
+          <button onClick={() => setMode('landscape')}>Landscape</button>
+          <button onClick={() => setMode('credentials')}>Credentials</button>
+          <button onClick={() => setMode('dataservices')}>Dataservices</button>
+          <button onClick={() => setMode('firewalls')}>Firewalls</button>
           <button onClick={() => navigate("/dashboard")}>← Natrag</button>
         </div>
       </div>
 
-      {graphData ? (
-        <GraphCanvasComponent data={graphData} />
+      {graphs[mode] ? (
+        <GraphCanvasComponent data={graphs[mode]!} />
       ) : (
         <p style={{ padding: "1rem" }}>Učitavanje grafa...</p>
       )}

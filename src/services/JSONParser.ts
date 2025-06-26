@@ -247,7 +247,11 @@ export function parseJSONToGraph(json: any, inputJson?: any): GraphData {
       }
 
       edges.push({ id: `edge-${compId}-${swId}`, source: compId, target: swId, type: 'computer-software' });
-
+      // Provjeri je li software izložen Internetu
+      const isExposedToInternet = inputJson?.provided_external_services?.some((svc: string) =>
+        binaryLabel.toLowerCase().includes(svc.toLowerCase()) ||
+        (sw.provides_network_services || []).some((srv: string) => srv.toLowerCase().includes(svc.toLowerCase()))
+      );
       if (hasPerson) {
         const customerLabel = getCustomerLabel(binaryLabel);
         const customerId = `${customerLabel}-${swId}`;
