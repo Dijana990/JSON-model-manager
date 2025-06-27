@@ -30,3 +30,7 @@ env/
 instance/
 *.db
 *.sqlit*
+
+# VS Code workspace settings
+.vscode/
+*.code-workspace
