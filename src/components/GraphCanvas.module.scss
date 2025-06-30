@@ -1,137 +1,185 @@
 .container {
   position: relative;
   width: 100%;
-  height: 100%;
-  padding: 1rem;
- 
-
-  .mainTitle {
-    font-size: 18px;
-    font-weight: bold;
-    text-align: center;
-    margin: 0 0 1.5rem 0; 
-  }
+  height: 100vh;
+  display: flex;
+  background-color: #f5f7fa;
+  overflow: hidden;
 }
 
+/* FILTER PANEL */
 .filterPanel {
-  position: relative;
-  z-index: 1000;
-  background: #fff;
-  padding: 1rem;
-  border-radius: 8px;
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background-color: white;
   border: 1px solid #5B88B2;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  width: 200px;
+  border-radius: 8px;
+  padding: 20px;
+  width: 240px;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
 
-  .filterGroup,
-  .filterTypes {
-    margin-bottom: 0.5rem;
+.mainTitle {
+  margin: 0 0 10px;
+  font-size: 18px;
+  color: #4a5568;
+  text-align: center;
+}
 
-    label {
-      display: block;
-      margin: 0.25rem 0 0;
-      font-weight: bold;
-    }
+.filterGroup {
+  margin-bottom: 15px;
+}
 
-    select {
-      padding: 0.25rem;
-      border-radius: 4px;
-      border: 1px solid #f9b90e;
-      width: 100%;
-      margin-top: 0.25rem;
+.filterGroup label,
+.filterTypes label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: black;
+}
 
-      &:hover {
-        border: 1px solid #5B88B2;
-    }
-    }
-
-    input[type="checkbox"] {
-      margin-right: 4px;
-    }
+.filterGroup select {
+  width: 100%;
+  padding: 6px;
+  border-radius: 4px;
+  border: 1px solid #f9b90e;
+  
+    &:hover {
+    border-color: #5B88B2;
   }
 }
 
+.filterTypes {
+  margin-top: 8px;
+}
+
+
+.filterTypes label {
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+/* X GUMB ZA ZATVARANJE */
+.closeButton {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #5B88B2;
+
+  &:hover {
+    color: #f9b90e;
+  }
+}
+
+/* SHOW FILTERS BUTTON */
+.showButton {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  padding: 8px 14px;
+  border-radius: 5px;
+  border: none;
+  background-color: #5B88B2;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 5;
+  transition: background-color 0.2s ease-in-out;
+
+  &:hover {
+    background-color: #f9b90e;
+  }
+}
+
+
+/* SHIFT PANEL (POMAK ČVOROVA) */
 .shiftPanel {
-  position: fixed;
-  bottom: 10px;
-  right: 10px;
+  position: fixed; /* tako da je neovisan o roditeljskim elementima */
+  bottom: 20px;
+  right: 20px; /* postavi desno */
   background: white;
   border: 1px solid #5B88B2;
-  padding: 1rem;
   border-radius: 8px;
-  z-index: 1000;
+  padding: 10px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
 
-  .rowCenter {
-    display: flex;
-    justify-content: center;
-    margin: 0.3rem 0;
 
-    button {
-      padding: 0.5rem 1rem;
-      font-size: 14px;
-      background: #f9b90e;
-      border: 2px solid #f9b90e;
-      cursor: pointer;
-      color:#fff;
+.rowCenter,
+.rowBetween {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
 
-      &:hover {
-        background: #5B88B2;
-        border: 2px solid #5B88B2;
-      }
-    }
-  }
+.rowBetween {
+  justify-content: space-between;
+}
 
-  .rowBetween {
-    display: flex;
-    justify-content: space-between;
-    gap: 5px;
+.shiftPanel button {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  border-radius: 4px;
+  border: 1px solid #5B88B2;
+  background: #5B88B2;
+  cursor: pointer;
 
-    button {
-      padding: 0.5rem 1rem;
-      font-size: 14px;
-      background: #f9b90e;
-      border: 2px solid #f9b90e;
-      cursor: pointer;
-      color:#fff;
-
-      &:hover {
-        background: #5B88B2;
-        border: 2px solid #5B88B2;
-      }
-    }
+  &:hover {
+    background: #f9b90e;
+    border: 1px solid #f9b90e;
   }
 }
 
+/* NODE INFO PANEL */
 .nodePanel {
   position: fixed;
-  right: 10px;
-  top: 10px;
+  top: 20px;
+  right: 20px;
+  width: 240px;
   background: white;
   border: 1px solid #5B88B2;
-  padding: 1rem;
   border-radius: 8px;
-  z-index: 1000;
-  width: 300px;
-  font-size: small;
-
-  h3 {
-    margin: 0 0 0.5rem 0;
-    text-align: center;
-  }
+  padding: 16px;
+  z-index: 999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  
 }
 
+.nodePanel h3 {
+  margin-top: 0;
+  text-align: center;
+  
+}
+
+.nodePanel p {
+  margin: 4px 0;
+  font-size: 14px;
+  
+}
+
+/* HOVER PANEL */
 .hoverPanel {
   position: absolute;
-  left: 10px;
+  pointer-events: none;
   bottom: 10px;
-  background: #fff;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  box-shadow: 0 0 6px rgba(0,0,0,0.2);
-  z-index: 1000;
-
-  strong {
-    font-size: 14px;
-  }
+  right: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 13px;
+  z-index: 100;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
-

@@ -1,39 +1,13 @@
-/**
- * GraphicalModelViewer.tsx
- *
- * Glavna stranica za vizualizaciju modeliranih IT sustava.
- * - Omogućuje učitavanje više JSON datoteka i spajanje njihovih podataka u jedan graf.
- * - Parsira i konvertira JSON u prikladan format (`GraphData`) za prikaz u Reagraph komponenti.
- * - Prikazuje korisničko sučelje s navigacijskim gumbima i Reagraph platnom.
- * - Kompatibilna s datotekama tipa `File`, `FileItem` i `string` sadržajima.
- *
- * Ova komponenta je rezultat integracije dva projekta — originalnog JSON-parsing prikaza
- * i novog vizualnog editora temeljenog na Reagraph-u.
- */
-
-// TODO:
-// - Implementirati undo/redo funkcionalnost unutar prikaza grafa (moguće pomoću `useGraph` hooka).
-// - Dodati gumb za spremanje izmijenjenog grafa u JSON (npr. kao preuzimanje fajla ili spremanje u localStorage).
-// - Povezati stanje prikazanog grafa sa spremištem izmjena (za razliku između originalnog i modificiranog).
-// - Podesiti layout gumba (Landscape, Credentials itd.) ako budu povezani s filtrima grafa.
-// - Razmisliti treba li GraphicalModelViewer ostati kao posredna komponenta ili se preusmjeravanje može pojednostaviti.
-
-
-
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import styles from "./graphicalmodelviewer.module.scss";
 import GraphCanvasComponent from "../components/GraphCanvas";
 import { parseJSONToGraph } from "../services/JSONParser";
-import { filterFirewallsGraph } from "../graphModes/firewalls"; // importiraj svoju funkciju!
+import { filterFirewallsGraph } from "../graphModes/firewalls";
 import type { GraphData, FileItem } from "../types";
 
 function mergeGraphs(graphs: GraphData[]): GraphData {
-  const merged: GraphData = {
-    nodes: [],
-    edges: [],
-  };
-
+  const merged: GraphData = { nodes: [], edges: [] };
   const nodeIds = new Set<string>();
   const edgeIds = new Set<string>();
 
@@ -78,7 +52,7 @@ export default function GraphicalModelViewer() {
       try {
         const results = await Promise.all(
           files.map((file) =>
-            new Promise<{graph: GraphData, raw: any}>((resolve, reject) => {
+            new Promise<{ graph: GraphData; raw: any }>((resolve, reject) => {
               const reader = new FileReader();
               reader.onload = () => {
                 try {
@@ -90,19 +64,12 @@ export default function GraphicalModelViewer() {
                 }
               };
               reader.onerror = reject;
+
               if (file instanceof File) {
                 reader.readAsText(file);
-              } else if (
-                typeof file === "object" &&
-                "fileObject" in file &&
-                file.fileObject instanceof File
-              ) {
+              } else if (typeof file === "object" && "fileObject" in file && file.fileObject instanceof File) {
                 reader.readAsText(file.fileObject);
-              } else if (
-                typeof file === "object" &&
-                "content" in file &&
-                typeof file.content === "string"
-              ) {
+              } else if (typeof file === "object" && "content" in file && typeof file.content === "string") {
                 reader.readAsText(new Blob([file.content]));
               } else {
                 reject(new Error("Nepoznat format file objekta"));
@@ -112,38 +79,58 @@ export default function GraphicalModelViewer() {
         );
 
         if (results.length > 0) {
-          // Merge grafa i merge raw JSON-ova (za firewalls input)
-          const mergedGraph = mergeGraphs(results.map(r => r.graph));
-          const mergedRaw = results[0]?.raw; // koristi prvi raw za firewalls, ili mergeaj po potrebi
+          const mergedGraph = mergeGraphs(results.map((r) => r.graph));
+          const mergedRaw = results[0]?.raw;
 
           setGraphs({
             landscape: mergedGraph,
             firewalls: filterFirewallsGraph(mergedGraph, '', new Set(), mergedRaw),
-            dataservices: null, // Dodaj kad implementiraš
-            credentials: null   // Dodaj kad implementiraš
+            dataservices: null,
+            credentials: null
           });
         }
       } catch (err) {
-        // ...
+        alert("Greška pri čitanju datoteka.");
+        navigate('/dashboard');
       }
     };
 
     if (files.length > 0) {
       readFiles();
     }
-  }, [files]);
+  }, [files, navigate]);
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h2>Graphical Model View</h2>
         <div className={styles.buttonGroup}>
-          <button onClick={() => setMode('landscape')}>Landscape</button>
-          <button onClick={() => setMode('credentials')}>Credentials</button>
-          <button onClick={() => setMode('dataservices')}>Dataservices</button>
-          <button onClick={() => setMode('firewalls')}>Firewalls</button>
+          <button
+            className={`${styles.modeButton} ${mode === 'landscape' ? styles.activeButton : ''}`}
+            onClick={() => setMode('landscape')}
+          >
+            Landscape
+          </button>
+          <button
+            className={`${styles.modeButton} ${mode === 'credentials' ? styles.activeButton : ''}`}
+            onClick={() => setMode('credentials')}
+          >
+            Credentials
+          </button>
+          <button
+            className={`${styles.modeButton} ${mode === 'dataservices' ? styles.activeButton : ''}`}
+            onClick={() => setMode('dataservices')}
+          >
+            Dataservices
+          </button>
+          <button
+            className={`${styles.modeButton} ${mode === 'firewalls' ? styles.activeButton : ''}`}
+            onClick={() => setMode('firewalls')}
+          >
+            Firewalls
+          </button>
           <button className={styles.backButton} onClick={() => navigate("/dashboard")}>
-             BACK TO JSON MANAGER
+            BACK TO JSON MANAGER
           </button>
         </div>
       </div>

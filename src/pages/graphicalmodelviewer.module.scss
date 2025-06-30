@@ -197,3 +197,27 @@
     }
   }
 }
+
+.modeButton {
+  padding: 8px 14px;
+  border-radius: 5px;
+  border: #f9b90e;
+  background-color: #f9b90e;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: #f9b90e;
+    border: #f9b90e;
+  }
+}
+
+.activeButton {
+  background-color: #cb4c46 !important;
+  border: 2px solid #cb4c46 !important;
+  color: black;
+}
+
+

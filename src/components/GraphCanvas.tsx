@@ -2,7 +2,15 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { GraphCanvas } from 'reagraph';
 import type { GraphData, NodeType, EdgeType } from '../types';
 import { getEdgeStyle, getEdgeLabel } from '../utils/edgeStyleUtils';
-import { isResolvedEdge, shiftConnectedNodes, getGroupColor, iconMap, simplifyGraph, resolveEdgeNodes, applyForceAtlasLayout } from '../utils/graphUtils';
+import {
+  isResolvedEdge,
+  shiftConnectedNodes,
+  getGroupColor,
+  iconMap,
+  simplifyGraph,
+  resolveEdgeNodes,
+  applyForceAtlasLayout
+} from '../utils/graphUtils';
 import { filterLandscapeGraph } from '../graphModes/landscape';
 import { getAvailableGroups, getAvailableTypes, getRelevantNodesByGroup } from '../utils/common';
 import ComputerEditorPanel from './ComputerEditorPanel';
@@ -17,6 +25,7 @@ interface GraphCanvasComponentProps {
 const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNodeClick }) => {
   const ref = useRef<any>(null);
   const preparedData = useMemo(() => prepareGraph(data), [data]);
+
   const [layoutedData, setLayoutedData] = useState(applyForceAtlasLayout(preparedData));
   const [hoveredNode, setHoveredNode] = useState<NodeType | null>(null);
   const [selectedComputerId, setSelectedComputerId] = useState<string | null>(null);
@@ -25,6 +34,7 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNod
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [selectedNode, setSelectedNode] = useState<NodeType | null>(null);
+  const [showFilterPanel, setShowFilterPanel] = useState(true);
 
   useEffect(() => {
     setAvailableGroups(getAvailableGroups(preparedData));
@@ -36,7 +46,10 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNod
 
   useEffect(() => {
     const { nodes, edges } = filterLandscapeGraph(preparedData, selectedGroup, selectedTypes);
-    const layouted = nodes.length === 0 ? applyForceAtlasLayout(preparedData) : applyForceAtlasLayout({ nodes, edges });
+    const layouted =
+      nodes.length === 0
+        ? applyForceAtlasLayout(preparedData)
+        : applyForceAtlasLayout({ nodes, edges });
     setLayoutedData(layouted);
   }, [selectedGroup, selectedTypes, preparedData]);
 
@@ -48,7 +61,7 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNod
       setSelectedTypes(new Set());
     } else {
       setSelectedTypes((prev) => {
-        const valid = new Set<string>(); 
+        const valid = new Set<string>();
         for (const t of prev) if (types.includes(t)) valid.add(t);
         return valid;
       });
@@ -60,34 +73,39 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNod
     newSet.has(type) ? newSet.delete(type) : newSet.add(type);
     setSelectedTypes(newSet);
   };
-  
+
   return (
     <div className={styles.container}>
-      <div className={styles.filterPanel}>
-        <h3 className={styles.mainTitle}>SELECT NODE</h3>
-        <div className={styles.filterGroup}>
-          <label>Group: </label>
-          <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)}>
-            <option value="">-- all --</option>
-            {availableGroups.map((g) => (
-              <option key={g} value={g}>{g}</option>
+      {showFilterPanel ? (
+        <div className={styles.filterPanel}>
+          <button className={styles.closeButton} onClick={() => setShowFilterPanel(false)}>✖</button>
+          <h3 className={styles.mainTitle}>SELECT NODE</h3>
+          <div className={styles.filterGroup}>
+            <label>Group: </label>
+            <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)}>
+              <option value="">-- all --</option>
+              {availableGroups.map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.filterTypes}>
+            <label>Types:</label><br />
+            {availableTypes.map((type) => (
+              <label key={type}>
+                <input
+                  type="checkbox"
+                  checked={selectedTypes.has(type)}
+                  onChange={() => toggleType(type)}
+                />{' '}
+                {type}
+              </label>
             ))}
-          </select>
+          </div>
         </div>
-        <div className={styles.filterTypes}>
-          <label>Types:</label><br />
-          {availableTypes.map((type) => (
-            <label key={type}>
-              <input
-                type="checkbox"
-                checked={selectedTypes.has(type)}
-                onChange={() => toggleType(type)}
-              />{' '}
-              {type}
-            </label>
-          ))}
-        </div>
-      </div>
+      ) : (
+        <button className={styles.showButton} onClick={() => setShowFilterPanel(true)}>Show Filters</button>
+      )}
 
       <ComputerEditorPanel
         node={selectedNode}
@@ -142,7 +160,7 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNod
             url: node.icon || iconMap[node.type?.toLowerCase?.()] || '/icons/computer.png',
             size: 48,
           },
-          label: { color: '#5B88B2', fontSize: 16},
+          label: { color: '#5B88B2', fontSize: 16 },
           borderRadius: 12,
           padding: 6,
           cursor: 'pointer',

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSession } from '../context/SessionContext';
 import { parseJSONToGraph } from '../services/JSONParser';
@@ -23,7 +23,6 @@ export default function JsonFileTable() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-
   const { setGraphData } = useSession();
 
   const handleAddClick = () => {
@@ -53,13 +52,11 @@ export default function JsonFileTable() {
 
     const sortedFiles = [...files].sort((a, b) => {
       let comparison = 0;
-
       if (field === 'name') {
         comparison = a.name.localeCompare(b.name);
       } else if (field === 'date') {
         comparison = a.timestamp - b.timestamp;
       }
-
       return newDirection === 'asc' ? comparison : -comparison;
     });
 
@@ -163,17 +160,23 @@ export default function JsonFileTable() {
                 <td>{file.size}</td>
                 <td>{file.date}</td>
                 <td className={styles.actions}>
-                  <button onClick={() => handleEdit(file)}>✏️</button>
-                  <div className={styles.dropdownWrapper}>
-                    <button onClick={() => setOpenDropdownIndex(openDropdownIndex === index ? null : index)}>⬇️</button>
-                    {openDropdownIndex === index && (
-                      <div className={styles.dropdown}>
-                        <button onClick={() => handleDownload('original', file)}>Download Original</button>
-                        <button onClick={() => handleDownload('modified', file)}>Download Modified</button>
+                  {file.name.toLowerCase().includes('input') ? (
+                    <button onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))}>🗑️</button>
+                  ) : (
+                    <>
+                      <button onClick={() => handleEdit(file)}>✏️</button>
+                      <div className={styles.dropdownWrapper}>
+                        <button onClick={() => setOpenDropdownIndex(openDropdownIndex === index ? null : index)}>⬇️</button>
+                        {openDropdownIndex === index && (
+                          <div className={styles.dropdown}>
+                            <button onClick={() => handleDownload('original', file)}>Download Original</button>
+                            <button onClick={() => handleDownload('modified', file)}>Download Modified</button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <button onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))}>🗑️</button>
+                      <button onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))}>🗑️</button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
