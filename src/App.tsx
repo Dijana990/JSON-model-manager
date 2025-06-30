@@ -3,6 +3,7 @@ import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import LoginPage from './pages/loginpage'
 import DashboardPage from './pages/dashboardPage'
 import GraphicalModelViewer from './pages/GraphicalModelViewer'
+import ProtectedRoute from './routes/ProtectedRoute'
 import styles from './components/loginform.module.scss'
 // @ts-ignore
 import NET from "vanta/dist/vanta.net.min";
@@ -14,7 +15,6 @@ function App() {
   const [vantaEffect, setVantaEffect] = useState<any>(null)
 
   useEffect(() => {
-    // Pokreni animaciju samo na /login
     if (location.pathname === '/login' && !vantaEffect && vantaRef.current) {
       setVantaEffect(
         NET({
@@ -29,29 +29,45 @@ function App() {
           color: 0xFF0000,
           points: 15.0,
           maxDistance: 25.0,
-          spacing: 20.0
+          spacing: 20.0,
+          vertexColors: false
         })
       )
     }
-    // Uništi animaciju kad napustiš /login
     if (location.pathname !== '/login' && vantaEffect) {
       vantaEffect.destroy()
       setVantaEffect(null)
     }
-    // eslint-disable-next-line
-  }, [location.pathname])
+  }, [location.pathname, vantaEffect])
 
   return (
     <>
       {location.pathname === '/login' && (
         <div ref={vantaRef} className={styles.animatedBg} />
       )}
-      
+
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/viewer" element={<GraphicalModelViewer />} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/viewer"
+          element={
+            <ProtectedRoute>
+              <GraphicalModelViewer />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </>

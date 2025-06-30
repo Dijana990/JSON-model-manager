@@ -18,12 +18,18 @@ type SortDirection = 'asc' | 'desc';
 
 export default function JsonFileTable() {
   const [files, setFiles] = useState<FileItem[]>([]);
-  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [fileToDeleteIndex, setFileToDeleteIndex] = useState<number | null>(null);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const [downloadFile, setDownloadFile] = useState<FileItem | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { setGraphData } = useSession();
+
+  const userRole = localStorage.getItem('userRole');
 
   const handleAddClick = () => {
     fileInputRef.current?.click();
@@ -122,8 +128,71 @@ export default function JsonFileTable() {
     navigate('/login');
   };
 
+  const confirmDelete = (index: number) => {
+    setFileToDeleteIndex(index);
+    setShowConfirm(true);
+  };
+
+  const handleDeleteConfirmed = () => {
+    if (fileToDeleteIndex !== null) {
+      setFiles((prev) => prev.filter((_, i) => i !== fileToDeleteIndex));
+    }
+    setShowConfirm(false);
+    setFileToDeleteIndex(null);
+  };
+
+  const cancelDelete = () => {
+    setShowConfirm(false);
+    setFileToDeleteIndex(null);
+  };
+
+  const openDownloadModal = (file: FileItem) => {
+    setDownloadFile(file);
+    setShowDownloadModal(true);
+  };
+
+  const closeDownloadModal = () => {
+    setDownloadFile(null);
+    setShowDownloadModal(false);
+  };
+
   return (
     <div className={styles.pageWrapper}>
+      {/* Delete confirmation modal */}
+      {showConfirm && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modal}>
+            <p>Are you sure you want to delete this file?</p>
+            <div className={styles.modalButtons}>
+              <button onClick={handleDeleteConfirmed}>Yes, delete</button>
+              <button onClick={cancelDelete}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Download modal */}
+      {showDownloadModal && downloadFile && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modal}>
+            <p>Select download type:</p>
+            <div className={styles.modalButtons}>
+              <button onClick={() => {
+                handleDownload('original', downloadFile);
+                closeDownloadModal();
+              }}>Download Original</button>
+              <button onClick={() => {
+                handleDownload('modified', downloadFile);
+                closeDownloadModal();
+              }}>Download Modified</button>
+            </div>
+            <div className={styles.modalButtons}>
+              <button onClick={closeDownloadModal}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={styles.exitWrapper}>
         <button className={styles.exitButton} onClick={handleExit}>EXIT</button>
       </div>
@@ -161,20 +230,16 @@ export default function JsonFileTable() {
                 <td>{file.date}</td>
                 <td className={styles.actions}>
                   {file.name.toLowerCase().includes('input') ? (
-                    <button onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))}>🗑️</button>
+                    <button onClick={() => confirmDelete(index)}>🗑️</button>
                   ) : (
                     <>
-                      <button onClick={() => handleEdit(file)}>✏️</button>
-                      <div className={styles.dropdownWrapper}>
-                        <button onClick={() => setOpenDropdownIndex(openDropdownIndex === index ? null : index)}>⬇️</button>
-                        {openDropdownIndex === index && (
-                          <div className={styles.dropdown}>
-                            <button onClick={() => handleDownload('original', file)}>Download Original</button>
-                            <button onClick={() => handleDownload('modified', file)}>Download Modified</button>
-                          </div>
-                        )}
-                      </div>
-                      <button onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))}>🗑️</button>
+                      {userRole !== 'viewer' && (
+                        <button onClick={() => handleEdit(file)}>✏️</button>
+                      )}
+                      <button onClick={() => openDownloadModal(file)}>⬇️</button>
+                      {userRole !== 'viewer' && (
+                        <button onClick={() => confirmDelete(index)}>🗑️</button>
+                      )}
                     </>
                   )}
                 </td>
@@ -182,7 +247,6 @@ export default function JsonFileTable() {
             ))}
           </tbody>
         </table>
-
         <div className={styles.footer}>Total files: {files.length}</div>
       </div>
     </div>

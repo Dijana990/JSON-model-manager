@@ -51,7 +51,7 @@
     background-color: #f9b90e;
     border: none;
     border-radius: 4px;
-    height: 100%; /* Visina jednaka input polju */
+    height: 100%; 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -107,5 +107,48 @@
     }
   }
 }
+}
 
+.modalBackdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 300px;
+  text-align: center;
+  color: #2d3748;
+}
+
+.modalButtons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
+.modalButtons button {
+  flex: 1;
+  margin: 0 5px;
+  padding: 10px;
+  cursor: pointer;
+  background-color: #cbd5e0;
+  color: black;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+
+  &:hover {
+    background-color: #a0aec0;
+  }
 }

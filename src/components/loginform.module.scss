@@ -1,9 +1,10 @@
 .animatedBg {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0; // ili čak 1
   pointer-events: none;
 }
+
 
 .container {
   flex: 1;
@@ -102,4 +103,40 @@
   color: #cb4c46;
   font-size: 0.75rem;
   margin-top: 0.25rem;
+}
+//novo dodano, na tome se radi
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.alertBox {
+  width: 100%;
+  max-width: 400px;
+  padding: 1.5rem 1rem;
+  margin-bottom: 1rem;
+  border: 2px solid;
+  border-radius: 5px;
+  text-align: center;
+  font-weight: bold;
+  background-color: #f9f9f9;
+  font-size: medium;
+
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+
+.alertHidden {
+  opacity: 0;
+}
+
+.success {
+  border-color: green;
+  color: green;
+}
+
+.error {
+  border-color: red;
+  color: red;
 }

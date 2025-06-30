@@ -9,10 +9,17 @@ type ComputerEditorPanelProps = {
   onCancel: () => void;
 };
 
-const ComputerEditorPanel: React.FC<ComputerEditorPanelProps> = ({ node, availableNetworks, onSave, onCancel }) => {
+const ComputerEditorPanel: React.FC<ComputerEditorPanelProps> = ({
+  node,
+  availableNetworks,
+  onSave,
+  onCancel
+}) => {
   const [label, setLabel] = useState('');
   const [software, setSoftware] = useState<string[]>([]);
   const [editedNetwork, setEditedNetwork] = useState('');
+  const [showBackConfirm, setShowBackConfirm] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
   useEffect(() => {
     if (node && node.type === 'computer') {
@@ -31,17 +38,17 @@ const ComputerEditorPanel: React.FC<ComputerEditorPanelProps> = ({ node, availab
     newSoftware[index] = value;
     setSoftware(newSoftware);
   };
-  
+
   const handleAddSoftware = () => {
     setSoftware([...software, '']);
   };
-  
+
   const handleRemoveSoftware = (index: number) => {
     const newSoftware = [...software];
     newSoftware.splice(index, 1);
     setSoftware(newSoftware);
   };
-  
+
   const handleSave = () => {
     onSave({
       ...node,
@@ -58,9 +65,35 @@ const ComputerEditorPanel: React.FC<ComputerEditorPanelProps> = ({ node, availab
       }
     });
   };
-  
+
   return (
     <div className={styles.panel}>
+      {showBackConfirm && (
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modal}>
+            <p>Are you sure you want to go back?<br />Unsaved changes will be lost.</p>
+            <div className={styles.modalButtons}>
+              <button onClick={onCancel}>Yes, go back</button>
+              <button onClick={() => setShowBackConfirm(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showSaveConfirm && (
+  <div className={styles.modalBackdrop}>
+    <div className={styles.modal}>
+      <p>Are you sure you want to save the changes?</p>
+      <div className={styles.modalButtons}>
+        <button onClick={() => {
+          handleSave();
+          setShowSaveConfirm(false);
+        }}>Yes, save</button>
+        <button onClick={() => setShowSaveConfirm(false)}>Cancel</button>
+      </div>
+    </div>
+  </div>
+)}
+
       <h3>EDIT COMPUTER</h3>
       <label>Computer name:</label>
       <input
@@ -83,26 +116,24 @@ const ComputerEditorPanel: React.FC<ComputerEditorPanelProps> = ({ node, availab
       </select>
 
       <label>INSTALLED SOFTWARE</label>
-        {software.map((sw, index) => (
-          <div key={index} className={styles.softwareItem}>
-            <input
-              type="text"
-              value={sw}
-              onChange={(e) => handleSoftwareChange(index, e.target.value)}
-            />
-            <button onClick={() => handleRemoveSoftware(index)}>X</button>
-          </div>
-        ))}
+      {software.map((sw, index) => (
+        <div key={index} className={styles.softwareItem}>
+          <input
+            type="text"
+            value={sw}
+            onChange={(e) => handleSoftwareChange(index, e.target.value)}
+          />
+          <button onClick={() => handleRemoveSoftware(index)}>X</button>
+        </div>
+      ))}
 
       <button className={styles.addButton} onClick={handleAddSoftware}>
         + ADD SOFTWARE
       </button>
 
-      
-
       <div className={styles.actions}>
-        <button onClick={handleSave}>SAVE</button>
-        <button onClick={onCancel}>BACK</button>
+        <button onClick={() => setShowSaveConfirm(true)}>SAVE</button>
+        <button onClick={() => setShowBackConfirm(true)}>BACK</button>
       </div>
     </div>
   );

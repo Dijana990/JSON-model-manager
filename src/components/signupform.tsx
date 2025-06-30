@@ -10,59 +10,29 @@ export default function SignUpForm({ onFlip }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [role, setRole] = useState('viewer')
 
   const [usernameError, setUsernameError] = useState('')
   const [emailError, setEmailError] = useState('')
   const [passwordError, setPasswordError] = useState('')
   const [confirmError, setConfirmError] = useState('')
 
-  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUsername(e.target.value)
-    setUsernameError('')
-  }
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value)
-    setEmailError('')
-  }
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPassword(e.target.value)
-    setPasswordError('')
-  }
-  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setConfirmPassword(e.target.value)
-    setConfirmError('')
-  }
-
-  const validateUsername = (value: string): boolean => {
-    const regex = /^[a-zA-Z0-9]+$/
-    return regex.test(value)
-  }
-
-  const validateEmail = (value: string): boolean => {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return regex.test(value)
-  }
-
-  const validatePassword = (value: string): boolean => {
-    return value.length >= 6 && value.length <= 20
-  }
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     let isValid = true
 
-    if (!validateUsername(username)) {
+    if (!/^[a-zA-Z0-9]+$/.test(username)) {
       setUsernameError('Username can only contain letters and numbers')
       isValid = false
     }
 
-    if (!validateEmail(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEmailError('Invalid email format')
       isValid = false
     }
 
-    if (!validatePassword(password)) {
-      setPasswordError('Password must be 6-20 characters long')
+    if (password.length < 6 || password.length > 20) {
+      setPasswordError('Password must be 6–20 characters long')
       isValid = false
     }
 
@@ -72,8 +42,21 @@ export default function SignUpForm({ onFlip }: Props) {
     }
 
     if (isValid) {
-      console.log('Sign up:', { username, email, password })
-      onFlip()
+      fetch("http://localhost:5000/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password, role }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.message === "User created successfully") {
+            alert("Signup successful!")
+            onFlip()
+          } else {
+            alert(data.error || "Signup failed")
+          }
+        })
+        .catch(() => alert("Signup failed - server error"))
     }
   }
 
@@ -86,11 +69,9 @@ export default function SignUpForm({ onFlip }: Props) {
           Username:
           <input
             type="text"
-            placeholder="korisnik123"
             value={username}
-            onChange={handleUsernameChange}
+            onChange={(e) => { setUsername(e.target.value); setUsernameError('') }}
             required
-            autoComplete="off"
           />
           {usernameError && <span className={styles.error}>{usernameError}</span>}
         </label>
@@ -99,11 +80,9 @@ export default function SignUpForm({ onFlip }: Props) {
           Email:
           <input
             type="email"
-            placeholder="korisnik@mail.com"
             value={email}
-            onChange={handleEmailChange}
+            onChange={(e) => { setEmail(e.target.value); setEmailError('') }}
             required
-            autoComplete="off"
           />
           {emailError && <span className={styles.error}>{emailError}</span>}
         </label>
@@ -112,11 +91,9 @@ export default function SignUpForm({ onFlip }: Props) {
           Password:
           <input
             type="password"
-            placeholder="******"
             value={password}
-            onChange={handlePasswordChange}
+            onChange={(e) => { setPassword(e.target.value); setPasswordError('') }}
             required
-            autoComplete="new-password"
           />
           {passwordError && <span className={styles.error}>{passwordError}</span>}
         </label>
@@ -125,14 +102,14 @@ export default function SignUpForm({ onFlip }: Props) {
           Confirm Password:
           <input
             type="password"
-            placeholder="******"
             value={confirmPassword}
-            onChange={handleConfirmPasswordChange}
+            onChange={(e) => { setConfirmPassword(e.target.value); setConfirmError('') }}
             required
-            autoComplete="new-password"
           />
           {confirmError && <span className={styles.error}>{confirmError}</span>}
         </label>
+
+        
 
         <button type="submit" className={styles.button}>SIGN UP</button>
 
