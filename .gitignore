@@ -1,11 +1,39 @@
+# === Node.js / React / Vite ===
 node_modules/
 dist/
 build/
 .env
+.env.*.local
+*.local
+*.log
+.vite/
+
+# === TypeScript ===
+*.tsbuildinfo
+
+# === macOS ===
 .DS_Store
-Thumbs.db
-old_files/
+
+# === VSCode ===
+.vscode/
+
+# === Python / Flask ===
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+*.venv
+venv/
+ENV/
+env/
+instance/
+*.db
+*.sqlit*
 
 # VS Code workspace settings
 .vscode/
 *.code-workspace
+
+Thumbs.db
+old_files/
