@@ -25,8 +25,23 @@ import { useLocation, useNavigate } from "react-router-dom";
 import styles from "./graphicalmodelviewer.module.scss";
 import GraphCanvasComponent from "../components/GraphCanvas";
 import { parseJSONToGraph } from "../services/JSONParser";
-import { filterFirewallsGraph } from "../graphModes/firewalls"; // importiraj svoju funkciju!
+import { filterFirewallsGraph } from "../graphModes/firewalls";
+import { filterDataservicesGraph } from '../graphModes/dataservices';
+import { filterCredentialsGraph } from '../graphModes/credentials';
+
 import type { GraphData, FileItem } from "../types";
+
+
+function mergeRawJsons(raws: any[]): any {
+  const merged = { computers: {}, credentials: {}, data: {}, ...raws[0] };
+  for (const raw of raws) {
+    if (raw.computers) Object.assign(merged.computers, raw.computers);
+    if (raw.credentials) Object.assign(merged.credentials, raw.credentials);
+    if (raw.data) Object.assign(merged.data, raw.data);
+    // Dodaj ostala polja po potrebi
+  }
+  return merged;
+}
 
 function mergeGraphs(graphs: GraphData[]): GraphData {
   const merged: GraphData = {
@@ -60,6 +75,9 @@ export default function GraphicalModelViewer() {
   const location = useLocation();
   const files = (location.state?.files || []) as FileItem[];
 
+  const [selectedGroup, setSelectedGroup] = useState<string>(''); 
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
+
   const [mode, setMode] = useState<'landscape' | 'firewalls' | 'dataservices' | 'credentials'>('landscape');
   const [graphs, setGraphs] = useState<{
     landscape: GraphData | null,
@@ -72,7 +90,7 @@ export default function GraphicalModelViewer() {
     dataservices: null,
     credentials: null
   });
-
+  const [mergedRaw, setMergedRaw] = useState<any>(null);
   useEffect(() => {
     const readFiles = async () => {
       try {
@@ -114,13 +132,26 @@ export default function GraphicalModelViewer() {
         if (results.length > 0) {
           // Merge grafa i merge raw JSON-ova (za firewalls input)
           const mergedGraph = mergeGraphs(results.map(r => r.graph));
-          const mergedRaw = results[0]?.raw; // koristi prvi raw za firewalls, ili mergeaj po potrebi
-
+          const mergedRaw = mergeRawJsons(results.map(r => r.raw)); // koristi prvi raw za firewalls, ili mergeaj po potrebi
+          setMergedRaw(mergedRaw);
           setGraphs({
             landscape: mergedGraph,
-            firewalls: filterFirewallsGraph(mergedGraph, '', new Set(), mergedRaw),
-            dataservices: null, // Dodaj kad implementiraš
-            credentials: null   // Dodaj kad implementiraš
+            firewalls: filterFirewallsGraph(
+              mergedGraph,   // landscapeGraph (GraphData)
+              mergedRaw,     // inputJson (raw JSON)
+              selectedGroup,
+              selectedTypes
+            ),
+            dataservices: filterDataservicesGraph(
+              mergedRaw,     // inputJson (raw JSON)
+              selectedGroup,
+              selectedTypes
+            ),
+            credentials: filterCredentialsGraph(
+              mergedRaw,
+              selectedGroup,
+              selectedTypes
+            ),
           });
         }
       } catch (err) {
@@ -147,7 +178,15 @@ export default function GraphicalModelViewer() {
       </div>
 
       {graphs[mode] ? (
-        <GraphCanvasComponent data={graphs[mode]!} />
+        <GraphCanvasComponent
+          data={graphs[mode]!}
+          inputJson={mergedRaw}
+          viewMode={mode}
+          selectedGroup={selectedGroup}
+          setSelectedGroup={setSelectedGroup}
+          selectedTypes={selectedTypes}
+          setSelectedTypes={setSelectedTypes}
+        />
       ) : (
         <p style={{ padding: "1rem" }}>Učitavanje grafa...</p>
       )}

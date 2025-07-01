@@ -6,9 +6,9 @@
  * Uključuje pomoćne funkcije za prepoznavanje softvera, korisnika, mreža i servisa.
  * Ključno za pretvaranje modeliranih IT sustava u vizualnu mrežu.
  */
-import type { GraphData, NodeType, EdgeType } from '../types';
+import type { GraphData, NodeType, EdgeType, Computer, Software } from '../types';
 
-function getCustomerLabel(binaryLabel: string): string {
+export function getCustomerLabel(binaryLabel: string): string {
   switch (binaryLabel) {
     case "Office": return "Office";
     case "Outlook": return "EmailClient";
@@ -25,16 +25,36 @@ function getCustomerLabel(binaryLabel: string): string {
   }
 }
 
-function getBinaryLabel(sw: any): string {
+export function getBinaryLabel(sw: any): string {
   let name = sw?.name?.trim() || '';
   const cpe = sw?.cpe_idn || '';
   const idn = sw?.idn || '';
-  let source = name || cpe || idn;
+  const source = name || cpe || idn;
+
+  const normFull = source.toLowerCase();
+
+  // ➔ Ako je Exchange Server bilo gdje u stringu, vrati ga odmah
+  if (normFull.includes('exchange_server') || normFull.includes('exchange server'))
+    return 'Exchange Server';
 
   let extracted = source.split(/[:\/]/).pop() || source;
   extracted = extracted.split('#')[0];
   let norm = extracted.replace(/_/g, ' ').toLowerCase();
 
+  // ✅ Prvo provjeri cijeli string za Exchange Server i slične
+  if (normFull.includes('exchange_server') || normFull.includes('exchange server'))
+    return 'Exchange Server';
+
+  if (normFull.includes('sql_server:2019') || normFull.includes('sql server 2019'))
+    return 'SQL Server 2019';
+
+  if (normFull.includes('internet_banking_server') || normFull.includes('internet banking'))
+    return 'Internet Banking Server';
+
+  if (normFull.includes('windows_server_2016') || normFull.includes('windows server'))
+    return 'Windows Server 2016';
+
+  // ➔ Ako nije pronađen match u full stringu ➔ koristi extracted pristup
   if (norm.includes('sql server 2019') || norm.includes('sql_server:2019') || (norm.includes('sql server') && norm.includes('2019')))
     return 'SQL Server 2019';
   if (norm.includes('internet banking')) return 'Internet Banking Server';
@@ -43,10 +63,18 @@ function getBinaryLabel(sw: any): string {
   if (norm.includes('iis')) return 'IIS';
   if (norm.includes('.net')) return '.NET Framework';
   if (norm.includes('active directory')) return 'Microsoft Active Directory';
+  if (norm.includes('remote administration tools')) return 'Remote Administration Tools';
+  if (norm.includes('visual studio 2019')) return 'Visual Studio 2019';
+  if (norm.includes('fin_app_server')) return 'Financial App Server';
+  if (norm.includes('windows 10')) return 'Windows 10';
+  if (norm.includes('windows 11')) return 'Windows 11';
+
+  // ➔ Provjeri i cpe
   if (cpe.includes('remote_administration_tools')) return 'Remote Administration Tools';
   if (cpe.includes('visual_studio_2019')) return 'Visual Studio 2019';
   if (cpe.includes('fin_app_server')) return 'Financial App Server';
-
+  if (cpe.includes('windows_10')) return 'Windows 10';
+  if (cpe.includes('windows_11')) return 'Windows 11';
   if (cpe.includes('microsoft:office')) return 'Office';
   if (cpe.includes('microsoft:outlook')) return 'Outlook';
   if (cpe.includes('mozilla:firefox')) return 'Firefox';
@@ -56,11 +84,17 @@ function getBinaryLabel(sw: any): string {
   if (cpe.includes('windows_server_2016')) return 'Windows Server 2016';
   if (cpe.includes('sql_server:2019')) return 'SQL Server 2019';
   if (cpe.includes('microsoft:active_directory')) return 'Microsoft Active Directory';
-  if (norm.includes('remote administration tools')) return 'Remote Administration Tools';
-  if (norm.includes('visual studio 2019')) return 'Visual Studio 2019';
-  if (norm.includes('fin_app_server')) return 'Financial App Server';
 
   return extracted || source;
+}
+
+
+export function getDataserviceLabel(dsId: string): string {
+  const extracted = dsId.split('#')[0];
+  if (extracted.toLowerCase().includes('emails')) return 'Emails';
+  if (extracted.toLowerCase().includes('financialdata:banking')) return 'FinancialData:banking';
+  if (extracted.toLowerCase().includes('sourcecode:internet_banking')) return 'SourceCode:internet_banking';
+  return extracted;
 }
 
 // ✅ Nova pomoćna funkcija – je li softver OS bez korisničkih servisa
@@ -68,6 +102,9 @@ function isUnwantedOperatingSystem(sw: any): boolean {
   const cpe = sw?.cpe_idn || '';
   const label = getBinaryLabel(sw).toLowerCase();
 
+   // ➡️ ✅ IZNIMKA za Windows Server 2016
+  if (label.includes('windows server 2016')) return false;
+   
   const isOS = cpe.startsWith('cpe:/o:');
   const isKnownServer = label.includes('server') || label.includes('exchange') || label.includes('banking');
   const hasUserServices = sw?.provides_user_services?.length > 0;
@@ -75,11 +112,11 @@ function isUnwantedOperatingSystem(sw: any): boolean {
   return isOS && !hasUserServices && !isKnownServer;
 }
 
-function formatServerId(rawCompId: string): string {
+export function formatServerId(rawCompId: string): string {
   if (rawCompId.startsWith('None')) {
-    return 'server.' + rawCompId.replace(/^None:/, '').replace(/:/g, '.').replace(/#/g, '.');
+    return 'server.' + rawCompId.replace(/^None:/, '').replace(/:/g, '.');
   }
-  return rawCompId.replace(/:/g, '.').replace(/#/g, '.');
+  return rawCompId.replace(/:/g, '.');
 }
 
 function getGroupFromNode(id: string, type: string): string {
@@ -92,9 +129,8 @@ function getGroupFromNode(id: string, type: string): string {
   return 'default';
 }
 
-export function parseJSONToGraph(json: any, inputJson?: any): GraphData {
+export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystems = false): GraphData {
   if (!json?.computers || typeof json.computers !== 'object') {
-    console.warn('Neispravan ili prazan JSON: nedostaju "computers"');
     return { nodes: [], edges: [] };
   }
 
@@ -139,7 +175,10 @@ export function parseJSONToGraph(json: any, inputJson?: any): GraphData {
         fullName: role,
         type: 'user',
         icon: '/icons/user.png',
-        group: getGroupFromNode(roleId, 'user')
+        group: getGroupFromNode(roleId, 'user'),
+        meta: {
+          originalUser: roleId
+        }
       };
       nodes.push(nodeIndex[roleId]);
     }
@@ -185,8 +224,8 @@ export function parseJSONToGraph(json: any, inputJson?: any): GraphData {
         icon: '/icons/computer.png',
         group: networkGroup,
         meta: {
-          network_ids: networkIds,
-          groupLabel: networkIds.join(', ')
+          network_ids: comp.network_idn || [],
+          originalComputer: comp
         }
       };
       nodes.push(nodeIndex[compId]);
@@ -204,7 +243,10 @@ export function parseJSONToGraph(json: any, inputJson?: any): GraphData {
             fullName: personId,
             type: 'person',
             icon: '/icons/user.png',
-            group: getGroupFromNode(personId, 'person')
+            group: getGroupFromNode(personId, 'person'),
+            meta: {
+              originalUser: inputJson.people?.[personId] || null
+            }
           };
           nodes.push(nodeIndex[personId]);
         }
@@ -215,13 +257,16 @@ export function parseJSONToGraph(json: any, inputJson?: any): GraphData {
     for (const swId of validSoftwareIds) {
       const sw = comp.installed_software[swId];
       if (!sw || typeof sw !== 'object') continue;
-      if (isUnwantedOperatingSystem(sw)) continue;
+      if (!showOperatingSystems && isUnwantedOperatingSystem(sw)) continue;
 
       const binaryLabel = getBinaryLabel(sw);
       const binaryFullName = sw.name || sw.idn || sw.cpe_idn || swId;
       const binaryLabelLower = binaryLabel.toLowerCase();
 
-      if (!binaryLabel || binaryLabelLower === 'internet_connection') continue;
+      // ⛔️ SKIPAJ Internet_connection software u Landscape i Firewalls
+      if (binaryLabelLower === 'internet_connection') continue;     
+      /* if (!binaryLabel || binaryLabelLower === 'internet_connection') continue; */
+      if (!binaryLabel) continue;
 
       const providesValidService = (sw.provides_network_services || []).some((srv: string) => {
         const norm = srv.trim().toLowerCase();
@@ -241,7 +286,14 @@ export function parseJSONToGraph(json: any, inputJson?: any): GraphData {
           fullName: binaryFullName,
           type: 'software',
           icon: '/icons/binary.png',
-          group: getGroupFromNode(swId, 'software')
+          group: getGroupFromNode(swId, 'software'),
+          provides_services: sw.provides_services || [],
+          provides_network_services: sw.provides_network_services || [],
+          meta: {
+            computer_idn: rawCompId,
+            network_ids: sw.network_idn || [],
+            originalSoftware: sw
+          }
         };
         nodes.push(nodeIndex[swId]);
       }
@@ -270,6 +322,7 @@ export function parseJSONToGraph(json: any, inputJson?: any): GraphData {
       }
 
       for (const serviceName of sw.provides_network_services || []) {
+        if (serviceName.toLowerCase() === 'internet') continue; // ⛔️ SKIPAJ Internet service za Landscape i Firewalls
         const serviceId = `${serviceName}-${swId}`;
         if (!nodeIndex[serviceId]) {
           nodeIndex[serviceId] = {
@@ -278,7 +331,10 @@ export function parseJSONToGraph(json: any, inputJson?: any): GraphData {
             fullName: serviceName,
             type: 'service',
             icon: '/icons/service.png',
-            group: getGroupFromNode(serviceId, 'service')
+            group: getGroupFromNode(serviceId, 'service'),
+            meta: {
+              originalService: inputJson.services?.[serviceId] || null
+            }
           };
           nodes.push(nodeIndex[serviceId]);
         }
@@ -318,6 +374,7 @@ export function parseJSONToGraph(json: any, inputJson?: any): GraphData {
       y: radius * Math.sin(angle)
     });
   });
+
 
   const nodesWithCoordinates = nodes.map(node => {
     const coords = node.group ? groupCoordinates.get(node.group) : undefined;

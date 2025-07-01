@@ -41,6 +41,8 @@ import type { GraphDataWithResolvedEdges } from '../utils/graphUtils';
 import ComputerEditorPanel from './ComputerEditorPanel';
 import { isResolvedEdge } from '../utils/graphUtils';
 import { prepareGraph } from '../utils/prepareGraph';
+import { filterFirewallsGraph } from '../graphModes/firewalls';
+import { filterDataservicesGraph } from '../graphModes/dataservices';
 import {
   applyForceAtlasLayout,
   resolveEdgeNodes,
@@ -56,10 +58,25 @@ import { getAvailableGroups, getAvailableTypes, getRelevantNodesByGroup } from '
 
 interface GraphCanvasComponentProps {
   data: GraphData;
+  inputJson: any;
   onNodeClick?: (node: NodeType) => void;
+  viewMode: 'landscape' | 'firewalls' | 'dataservices' | 'credentials';
+  selectedGroup: string;
+  setSelectedGroup: React.Dispatch<React.SetStateAction<string>>;
+  selectedTypes: Set<string>;
+  setSelectedTypes: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
-const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNodeClick }) => {
+const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
+  data,
+  inputJson,
+  onNodeClick,
+  viewMode,
+  selectedGroup,
+  setSelectedGroup,
+  selectedTypes,
+  setSelectedTypes
+}) => {
   const ref = useRef<any>(null);
   const preparedData = useMemo(() => prepareGraph(data), [data]);
   const [layoutedData, setLayoutedData] = useState<GraphDataWithResolvedEdges>(() => {
@@ -69,9 +86,9 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNod
   const [hoveredNode, setHoveredNode] = useState<NodeType | null>(null);
   const [selectedComputerId, setSelectedComputerId] = useState<string | null>(null);
   const [availableGroups, setAvailableGroups] = useState<string[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<string>('');
+  /* const [selectedGroup, setSelectedGroup] = useState<string>(''); */
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
-  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
+  /* const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set()); */
   const [selectedNode, setSelectedNode] = useState<NodeType | null>(null);
 
   const handleExport = () => {
@@ -97,15 +114,27 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNod
 
   // Filtriraj i layoutaj graf kad se promijeni filter
   useEffect(() => {
-    const { nodes, edges } = filterLandscapeGraph(preparedData, selectedGroup, selectedTypes);
+    let filteredResult;
+
+    if (viewMode === 'firewalls') {
+      filteredResult = filterFirewallsGraph(preparedData, inputJson, selectedGroup, selectedTypes);
+    } else if (viewMode === 'dataservices') {
+      filteredResult = filterDataservicesGraph(inputJson, selectedGroup, selectedTypes);
+    } else {
+      filteredResult = filterLandscapeGraph(preparedData, selectedGroup, selectedTypes);
+    }
+
+    const { nodes, edges } = filteredResult;
+
     if (nodes.length === 0) {
       const layouted = applyForceAtlasLayout(preparedData);
       setLayoutedData(layouted);
       return;
     }
+
     const layouted = applyForceAtlasLayout({ nodes, edges });
     setLayoutedData(layouted);
-  }, [selectedGroup, selectedTypes, preparedData]);
+  }, [viewMode, selectedGroup, selectedTypes, preparedData]);
 
   // Omogući selekciju/deselekciju tipova (checkbox)
   const toggleType = (type: string) => {
@@ -133,6 +162,9 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNod
     }
   }, [selectedGroup, preparedData]);
 
+  useEffect(() => {
+
+  }, [layoutedData]);
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1000, background: '#fff', padding: '0.5rem', borderRadius: 8 }}>

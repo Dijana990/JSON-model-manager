@@ -7,7 +7,7 @@ import { SessionProvider } from './context/SessionContext'; // putanja do Sessio
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <SessionProvider> {/* ✅ DODANO OVDJE */}
+      <SessionProvider>
         <App />
       </SessionProvider>
     </BrowserRouter>
