@@ -5,3 +5,7 @@ build/
 .DS_Store
 Thumbs.db
 old_files/
+
+# VS Code workspace settings
+.vscode/
+*.code-workspace
