@@ -37,3 +37,4 @@ instance/
 
 Thumbs.db
 old_files/
+node_modules
