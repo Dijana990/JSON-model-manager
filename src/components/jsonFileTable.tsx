@@ -125,6 +125,10 @@ export default function JsonFileTable() {
   };
 
   const handleExit = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    // ili ako želiš sve očistiti:
+    // localStorage.clear();
     navigate('/login');
   };
 

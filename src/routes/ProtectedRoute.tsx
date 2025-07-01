@@ -33,7 +33,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }, [])
 
   if (isChecking) {
-    return <div>Loading...</div> // ili spinner ako želiš
+    return <div>Loading...</div> 
   }
 
   if (!isValid) {
