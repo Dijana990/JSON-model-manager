@@ -17,8 +17,6 @@ export function getEdgeStyle(edge: EdgeType, nodes: NodeType[]) {
   const sourceNode = nodes.find(n => n.id === edge.source);
   const targetNode = nodes.find(n => n.id === edge.target);
 
-  console.log('getEdgeStyle:', { edge, sourceNode, targetNode });
-
   // Po icon propertyju
   const sourceIcon = sourceNode?.icon;
   const targetIcon = targetNode?.icon;
