@@ -18,13 +18,13 @@ type SortDirection = 'asc' | 'desc';
 
 export default function JsonFileTable() {
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [openDropdownIndex, setOpenDropdownIndex] = useState<number | null>(null);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [showConfirm, setShowConfirm] = useState(false);
   const [fileToDeleteIndex, setFileToDeleteIndex] = useState<number | null>(null);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [downloadFile, setDownloadFile] = useState<FileItem | null>(null);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { setGraphData } = useSession();
@@ -125,6 +125,10 @@ export default function JsonFileTable() {
   };
 
   const handleExit = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    // ili ako želiš sve očistiti:
+    // localStorage.clear();
     navigate('/login');
   };
 
