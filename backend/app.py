@@ -2,7 +2,10 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import (
-    JWTManager, create_access_token, jwt_required, get_jwt_identity
+    JWTManager,
+    create_access_token,
+    jwt_required,
+    get_jwt_identity,
 )
 from flask_cors import CORS
 
@@ -10,7 +13,9 @@ app = Flask(__name__)
 CORS(app)
 
 # Konfiguracija baze i JWT tajne
-app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres:123456@localhost:5432/login_db"
+app.config["SQLALCHEMY_DATABASE_URI"] = (
+    "postgresql://postgres:123456@localhost:5432/login_db"
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET_KEY"] = "tajna"
 
@@ -21,37 +26,45 @@ jwt = JWTManager(app)
 
 # ------------------ MODELI ------------------
 
+
 class User(db.Model):
-    __tablename__ = 'users'
+    __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.Text, nullable=False)
 
-    role = db.relationship('UserRole', backref='user', uselist=False, cascade='all, delete')
+    role = db.relationship(
+        "UserRole", backref="user", uselist=False, cascade="all, delete"
+    )
 
 
 class UserRole(db.Model):
-    __tablename__ = 'users_role'
+    __tablename__ = "users_role"
 
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), primary_key=True)
     role = db.Column(db.String(20), nullable=False)
 
 
 # ------------------ RUTA: SIGNUP ------------------
+
 
 @app.route("/signup", methods=["POST"])
 def signup():
     try:
         data = request.get_json()
 
-        if User.query.filter((User.username == data["username"]) | (User.email == data["email"])).first():
+        if User.query.filter(
+            (User.username == data["username"]) | (User.email == data["email"])
+        ).first():
             return jsonify(error="Username or email already exists"), 409
 
         hashed_pw = bcrypt.generate_password_hash(data["password"]).decode("utf-8")
 
-        user = User(username=data["username"], email=data["email"], password_hash=hashed_pw)
+        user = User(
+            username=data["username"], email=data["email"], password_hash=hashed_pw
+        )
         db.session.add(user)
         db.session.commit()
 
@@ -69,6 +82,7 @@ def signup():
 
 # ------------------ RUTA: LOGIN ------------------
 
+
 @app.route("/login", methods=["POST"])
 def login():
     try:
@@ -84,7 +98,9 @@ def login():
                 return jsonify(error="User role not found"), 403
 
             # ✅ Token uključuje id i rolu (u "sub" polju)
-            access_token = create_access_token(identity={"id": user.id, "role": user_role.role})
+            access_token = create_access_token(
+                identity={"id": user.id, "role": user_role.role}
+            )
             return jsonify(access_token=access_token)
 
         return jsonify(error="Invalid credentials"), 401
@@ -96,6 +112,7 @@ def login():
 
 # ------------------ RUTA: ME ------------------
 
+
 @app.route("/me", methods=["GET"])
 @jwt_required()
 def me():
@@ -104,6 +121,7 @@ def me():
 
 
 # ------------------ RUTA: ADMIN-ONLY ------------------
+
 
 @app.route("/admin-area", methods=["GET"])
 @jwt_required()
@@ -116,6 +134,7 @@ def admin_area():
 
 # ------------------ RUTA: DOWNLOAD (available to all users) ------------------
 
+
 @app.route("/download", methods=["GET"])
 @jwt_required()
 def download():
@@ -123,6 +142,7 @@ def download():
 
 
 # ------------------ RUTA: DELETE (admin-only) ------------------
+
 
 @app.route("/delete-item/<int:item_id>", methods=["DELETE"])
 @jwt_required()
@@ -134,6 +154,7 @@ def delete_item(item_id):
 
 
 # ------------------ RUTA: EDIT (admin-only) ------------------
+
 
 @app.route("/edit-item/<int:item_id>", methods=["PUT"])
 @jwt_required()
