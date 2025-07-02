@@ -21,9 +21,15 @@ export type NodeType = {
   x?: number;
   y?: number;
   z?: number;
+  provides_services?: string[];
+  provides_network_services?: string[];
+  computer_idn?: string;
   meta?: {
     network_ids?: number[];
     groupLabel?: string;
+    provides_services?: string[];
+    provides_network_services?: string[];
+    computer_idn?: string;
     [key: string]: any;
   };
   software?: string[];
@@ -66,3 +72,19 @@ export enum GraphViewMode {
   Firewalls = 'firewalls',
   Credentials = 'credentials'
 };
+
+export interface Software {
+  person_index: number;
+  person_group_id: string | null;
+  provides_user_services: string[];
+  provides_network_services: string[];
+  // ➕ dodaj po potrebi druge property-je (idn, cpe_idn itd.)
+}
+
+export interface Computer {
+  installed_software: Record<string, Software>;
+  person_index: number;
+  provides_network_services: string[];
+  network_idn: number[];
+  // ➕ dodaj po potrebi druge property-je
+}
