@@ -40,6 +40,6 @@ old_files
 
 # login
 
-backend/app.py
-src/components/loginform.tsx
-src/components/signupform.tsx
+# backend/app.py
+# src/components/loginform.tsx
+# src/components/signupform.tsx
