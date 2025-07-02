@@ -34,3 +34,12 @@ instance/
 # VS Code workspace settings
 .vscode/
 *.code-workspace
+
+# old files
+old_files
+
+# login
+
+backend/app.py
+src/components/loginform.tsx
+src/components/signupform.tsx
