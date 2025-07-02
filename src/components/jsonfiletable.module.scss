@@ -254,51 +254,75 @@
   color: #2d3748;
 }
 
+.modal {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  padding: 2.5rem;
+  border-radius: 16px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  font-size: 18px;
+  color: #1a202c;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  line-height: 1.6;
+}
+
 .modalBackdrop {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000; 
-}
-
-.modal {
-  background: white;
-  padding: 2rem;
-  border-radius: 10px;
-  text-align: center;
-  max-width: 300px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-  font-size: 20px;
-  color:#2d3748;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
 }
 
 .modalButtons {
   display: flex;
   justify-content: center;
-  gap: 12px; 
-  margin-top: 20px;
+  gap: 16px;
+  margin-top: 24px;
 }
 
-.modalButtons button { 
+.modalButtons button {
   flex: 1;
-  padding: 10px 16px;
+  padding: 12px 20px;
   font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  background-color: #cbd5e0;
-  color: black;
+  font-size: 15px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
-
-  &:hover {
-    background-color:  #a0aec0;
+  transition: all 0.3s ease;
+  letter-spacing: 0.2px;
+  
+  &:first-child {
+    border: 2px solid #e2e8f0;
+    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+    color: #4a5568;
+    
+    &:hover {
+      background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+      border-color: #cbd5e0;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+  }
+  
+  &:last-child {
+    border: 2px solid #e2e8f0;
+    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+    color: #4a5568;
+    
+    &:hover {
+      background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
+      border-color: #cbd5e0;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
   }
 }
-
-
