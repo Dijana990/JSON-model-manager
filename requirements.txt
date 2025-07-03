@@ -18,3 +18,11 @@ tabulate==0.9.0
 tqdm==4.67.1
 types-python-dateutil==2.9.0.20250516
 urllib3==2.4.0
+
+# additional for the Flask application
+Flask
+flask_sqlalchemy
+flask_bcrypt
+flask_jwt_extended
+flask_cors
+gunicorn
