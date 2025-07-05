@@ -1,5 +1,5 @@
 import type { NodeType, EdgeType } from '../types';
-import { filterGraphStrictWithRelated } from '../utils/common';
+import { filterGraphCredentialsCustom } from '../utils/common';
 import { getBinaryLabel, formatServerId } from '../services/JSONParser';
 
 function edgeExists(edges: EdgeType[], source: string, target: string) {
@@ -14,7 +14,6 @@ export function filterCredentialsGraph(
   const nodes: NodeType[] = [];
   const edges: EdgeType[] = [];
   const nodeIndex: Record<string, NodeType> = {};
-
   for (const [credId, cred] of Object.entries(inputJson.credentials || {}) as [string, any][]) {
     const hasRoot = cred.has_root || false;
     const linkedEmployees = cred.linked_employees || [];
@@ -72,9 +71,11 @@ export function filterCredentialsGraph(
     }
 
     // ➔ Add credential node s grupom
+    const shortCredLabel = credId.split('@')[0].split(':').pop()?.split('#')[0] || credId;
+
     const credNode: NodeType = {
       id: credId,
-      label: '',
+      label: (nodeType === 'key' || nodeType === 'lock') ? '' : shortCredLabel,
       fullName: credId,
       type: nodeType,
       icon: nodeIcon,
@@ -123,7 +124,7 @@ export function filterCredentialsGraph(
       if (!nodeIndex[compId]) {
         const compNode: NodeType = {
           id: compId,
-          label: compId,
+          label: formatServerId(compId),
           fullName: compId,
           type: 'computer',
           icon: '/icons/computer.png',
@@ -182,8 +183,21 @@ export function filterCredentialsGraph(
     }
   }
 
+    // ➡️ Nakon filtriranja osnovnih nodeova, filtriraj po tipu (omogući kombinirani prikaz kao u landscape)
+  if (selectedTypes && selectedTypes.size > 0) {
+    // Prikaži sve čvorove koji su u selectedTypes
+    const typeFilteredNodes = nodes.filter(n => selectedTypes.has(n.type));
+    const nodeIds = new Set(typeFilteredNodes.map(n => n.id));
+    // Prikaži sve rubove koji povezuju bilo koja dva prikazana čvora
+    const typeFilteredEdges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    nodes.length = 0;
+    edges.length = 0;
+    nodes.push(...typeFilteredNodes);
+    edges.push(...typeFilteredEdges);
+  }
+
   // 🔹 Filter final output
-  const filtered = filterGraphStrictWithRelated({ nodes, edges }, selectedGroup, selectedTypes);
+  const filtered = filterGraphCredentialsCustom({ nodes, edges }, selectedGroup);
 
   return filtered;
 }

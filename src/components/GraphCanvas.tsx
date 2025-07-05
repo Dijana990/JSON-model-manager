@@ -1,36 +1,3 @@
-/**
- * GraphCanvas.tsx
- *
- * Glavna komponenta za prikaz i interakciju s grafom modeliranog IT sustava korištenjem Reagraph biblioteke.
- * Omogućuje korisniku filtriranje čvorova po grupi i tipu, prikaz virtualnih veza na temelju konteksta
- * te uređivanje podataka o čvorovima (posebno računalima) putem bočnog panela.
- *
- * Ključne funkcionalnosti:
- * - Prikaz grafa temeljen na ForceAtlas2 rasporedu
- * - Filtriranje čvorova po grupi (dropdown) i tipu (checkbox)
- * - Automatsko dodavanje virtualnih rubova ovisno o kontekstu selektiranih tipova
- * - Prikaz dodatnih informacija o čvorovima prilikom hovera i klika
- * - Uređivanje računala preko `ComputerEditorPanel` komponente (izmjena naziva, mreže, softvera)
- * - Pomicanje susjednih čvorova u 4 smjera oko odabranog računala
- * - Izvoz izmijenjenog grafa kao JSON datoteke
- *
- * Props:
- * - `data`: izvorni graf podataka (čvorovi i rubovi)
- * - `onNodeClick`: opcionalni callback koji se poziva pri kliku na čvor
- *
- * Interna stanja:
- * - `layoutedData`: trenutno prikazani graf s layout pozicijama
- * - `selectedGroup`, `selectedTypes`: aktivni filteri
- * - `selectedNode`, `hoveredNode`: za prikaz detalja i interakciju
- * - `selectedComputerId`: posebno se koristi za prikaz kontrola pomicanja
- *
- * TODO:
- * - Integrirati undo/redo mehanizam pri promjenama grafa
- * - Razdvojiti logiku za virtualne rubove u posebnu funkciju ili modul
- * - Dodati uređivanje i drugih tipova čvorova (npr. user, service)
- * - Povezati s globalnim stanjem grafa (ako aplikacija bude koristila centraliziranu pohranu)
- */
-
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { GraphCanvas } from 'reagraph';
 import type { GraphData, NodeType, EdgeType } from '../types';
@@ -40,6 +7,8 @@ import ComputerEditorPanel from './ComputerEditorPanel';
 import { prepareGraph } from '../utils/prepareGraph';
 import { filterFirewallsGraph } from '../graphModes/firewalls';
 import { filterDataservicesGraph } from '../graphModes/dataservices';
+import { filterCredentialsGraph } from '../graphModes/credentials';
+import { filterLandscapeGraph } from '../graphModes/landscape';
 import {
   isResolvedEdge,
   applyForceAtlasLayout,
@@ -49,7 +18,6 @@ import {
   iconMap,
   simplifyGraph
 } from '../utils/graphUtils';
-import { filterLandscapeGraph } from '../graphModes/landscape';
 import { getAvailableGroups, getAvailableTypes, getRelevantNodesByGroup } from '../utils/common';
 import styles from './GraphCanvas.module.scss';
 
@@ -74,20 +42,43 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
   selectedTypes,
   setSelectedTypes
 }) => {
+ 
   const ref = useRef<any>(null);
   const preparedData = useMemo(() => prepareGraph(data), [data]);
   const [layoutedData, setLayoutedData] = useState<GraphDataWithResolvedEdges>(() => {
     const rawLayouted = applyForceAtlasLayout(preparedData);
     return rawLayouted;
   });
+  const [filteredData, setFilteredData] = useState<GraphData>({ nodes: [], edges: [] });
   const [hoveredNode, setHoveredNode] = useState<NodeType | null>(null);
   const [selectedComputerId, setSelectedComputerId] = useState<string | null>(null);
   const [availableGroups, setAvailableGroups] = useState<string[]>([]);
-  /* const [selectedGroup, setSelectedGroup] = useState<string>(''); */
-  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
-  /* const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set()); */
   const [selectedNode, setSelectedNode] = useState<NodeType | null>(null);
   const [showFilterPanel, setShowFilterPanel] = useState(true);
+  const [isIdVisible, setIsIdVisible] = useState(false);
+  const timeoutRef = useRef<number | null>(null);
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    setIsIdVisible(true);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = window.setTimeout(() => {
+      setIsIdVisible(false);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    // Cleanup timeout on component unmount
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleExport = () => {
     const jsonString = JSON.stringify(layoutedData, null, 2);
@@ -100,17 +91,15 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  // Postavi dostupne grupe i tipove kad se promijeni data
+  // ➡️ Postavi dostupne grupe prilikom učitavanja data
   useEffect(() => {
     setAvailableGroups(getAvailableGroups(preparedData));
-    const relevantNodes = getRelevantNodesByGroup(preparedData, selectedGroup);
-    setAvailableTypes(getAvailableTypes(relevantNodes));
     const layouted = applyForceAtlasLayout(preparedData);
     setLayoutedData(layouted);
     setTimeout(() => ref.current?.zoomToFit?.(), 200);
   }, [data]);
 
-  // Filtriraj i layoutaj graf kad se promijeni filter
+  // ➡️ Filtriraj i layoutaj graf kad se promijeni filter
   useEffect(() => {
     let filteredResult;
 
@@ -118,11 +107,14 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
       filteredResult = filterFirewallsGraph(preparedData, inputJson, selectedGroup, selectedTypes);
     } else if (viewMode === 'dataservices') {
       filteredResult = filterDataservicesGraph(inputJson, selectedGroup, selectedTypes);
+    } else if (viewMode === 'credentials') {
+      filteredResult = filterCredentialsGraph(inputJson, selectedGroup, selectedTypes);
     } else {
       filteredResult = filterLandscapeGraph(preparedData, selectedGroup, selectedTypes);
     }
 
     const { nodes, edges } = filteredResult;
+    setFilteredData({ nodes, edges });
 
     if (nodes.length === 0) {
       const layouted = applyForceAtlasLayout(preparedData);
@@ -132,36 +124,58 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
 
     const layouted = applyForceAtlasLayout({ nodes, edges });
     setLayoutedData(layouted);
-  }, [viewMode, selectedGroup, selectedTypes, preparedData]);
+  }, [viewMode, selectedGroup, selectedTypes, preparedData, inputJson]);
 
-  // Omogući selekciju/deselekciju tipova (checkbox)
+  // ➡️ Resetiraj selectedTypes prilikom promjene grupe
+  useEffect(() => {
+    setSelectedTypes(new Set());
+  }, [selectedGroup]);
+
+  // ➡️ Resetiraj selectedGroup i selectedTypes prilikom promjene viewMode
+  useEffect(() => {
+    setSelectedGroup("");
+    setSelectedTypes(new Set());
+  }, [viewMode]);
+  
+  // ➡️ Izračunaj availableTypes direktno u render funkciji (KONAČNA VERZIJA)
+  let types: string[] = [];
+
+  if (viewMode === 'dataservices') {
+    if (!selectedGroup) {
+      types = getAvailableTypes(preparedData.nodes);
+    } else {
+      const groupNodes = preparedData.nodes.filter(n => n.group === selectedGroup);
+      types = getAvailableTypes(groupNodes);
+    }
+  } else if (viewMode === 'firewalls') {
+    types = getAvailableTypes(preparedData.nodes.filter(n => n.type !== 'internet'));
+  } else if (viewMode === 'credentials') {
+    if (!selectedGroup) {
+      types = getAvailableTypes(preparedData.nodes);
+    } else {
+      const groupNodes = preparedData.nodes.filter(n => n.group === selectedGroup);
+      types = getAvailableTypes(groupNodes);
+    }
+  } else {
+    const relevantNodes = getRelevantNodesByGroup(preparedData, selectedGroup);
+    types = getAvailableTypes(relevantNodes);
+  }
+
+
+  if (selectedGroup === 'internet') {
+    types = types.filter(t => t === 'internet');
+  } else {
+    types = types.filter(t => t !== 'internet');
+  }
+
+
+  // ➡️ Omogući selekciju/deselekciju tipova (checkbox)
   const toggleType = (type: string) => {
     const newSet = new Set(selectedTypes);
     newSet.has(type) ? newSet.delete(type) : newSet.add(type);
     setSelectedTypes(newSet);
   };
-
-  // Kad se promijeni grupa, ažuriraj dostupne tipove i očisti nevažeće selekcije
-  useEffect(() => {
-    const relevantNodes = getRelevantNodesByGroup(preparedData, selectedGroup);
-    const types = getAvailableTypes(relevantNodes);
-    setAvailableTypes(types);
-    if (!selectedGroup) {
-      setSelectedTypes(new Set());
-    } else {
-      setSelectedTypes((prev) => {
-        const valid = new Set<string>();
-        for (const t of prev) {
-          if (types.includes(t)) valid.add(t);
-        }
-        return valid;
-      });
-    }
-  }, [selectedGroup, preparedData]);
-
-  useEffect(() => {
-
-  }, [layoutedData]);
+  
   return (
     <div className={styles.container}>
       {showFilterPanel ? (
@@ -170,7 +184,8 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
           <h3 className={styles.mainTitle}>SELECT NODE</h3>
           <div className={styles.filterGroup}>
             <label>Group: </label>
-            <select value={selectedGroup} onChange={(e) => setSelectedGroup(e.target.value)}>
+            <select value={selectedGroup}
+              onChange={(e) => setSelectedGroup(e.target.value)}>
               <option value="">-- all --</option>
               {availableGroups.map((g) => (
                 <option key={g} value={g}>{g}</option>
@@ -179,7 +194,7 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
           </div>
           <div className={styles.filterTypes}>
             <label>Types:</label><br />
-            {availableTypes.map((type) => (
+            {types.map((type) => (
               <label key={type}>
                 <input
                   type="checkbox"
@@ -195,79 +210,94 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
         <button className={styles.showButton} onClick={() => setShowFilterPanel(true)}>Show Filters</button>
       )}
 
-        <ComputerEditorPanel
-          node={selectedNode}
-          availableNetworks={availableGroups.filter(g => g.startsWith('network.internal.'))}
-          onSave={(updatedNode) => {
-            setLayoutedData((prev) => {
-              const updatedNodes = prev.nodes.map((n) =>
-                n.id === updatedNode.id ? updatedNode : n
-              );
-              const updatedEdges = prev.edges.map((e) => {
-                const updateRef = (ref: typeof e.source | typeof e.target) => {
-                  if (typeof ref === 'string') return ref;
-                  return ref.id === updatedNode.id ? updatedNode : ref;
-                };
-                return {
-                  ...e,
-                  source: updateRef(e.source),
-                  target: updateRef(e.target)
-                };
-              });
+      <ComputerEditorPanel
+        node={selectedNode}
+        availableNetworks={availableGroups.filter(g => g.startsWith('network.internal.'))}
+        onSave={(updatedNode) => {
+          setLayoutedData((prev) => {
+            const updatedNodes = prev.nodes.map((n) =>
+              n.id === updatedNode.id ? updatedNode : n
+            );
+            const updatedEdges = prev.edges.map((e) => {
+              const updateRef = (ref: typeof e.source | typeof e.target) => {
+                if (typeof ref === 'string') return ref;
+                return ref.id === updatedNode.id ? updatedNode : ref;
+              };
               return {
-                nodes: updatedNodes,
-                edges: updatedEdges
+                ...e,
+                source: updateRef(e.source),
+                target: updateRef(e.target)
               };
             });
-            setSelectedNode(null);
-          }}
-          onCancel={() => setSelectedNode(null)}
-        />
+            return {
+              nodes: updatedNodes,
+              edges: updatedEdges
+            };
+          });
+          setSelectedNode(null);
+        }}
+        onCancel={() => setSelectedNode(null)}
+      />
+      
+      <GraphCanvas
+        ref={ref}
+        nodes={layoutedData.nodes}
+        edges={layoutedData.edges.map((e) => ({
+          ...e,
+          source: typeof e.source === 'string' ? e.source : e.source.id,
+          target: typeof e.target === 'string' ? e.target : e.target.id
+        }))}
+        draggable
+        layoutType="forceDirected2d"
+        edgeArrowPosition={(edge: EdgeType) =>
+          edge.type === 'software-internet' || edge.type === 'internet-software'
+            ? 'end'
+            : 'none'
+        }
+        edgeStyle={(edge: EdgeType) => getEdgeStyle(edge, layoutedData.nodes)}
 
-        <GraphCanvas
-          ref={ref}
-          nodes={layoutedData.nodes}
-          edges={layoutedData.edges.map((e) => ({
-            ...e,
-            source: typeof e.source === 'string' ? e.source : e.source.id,
-            target: typeof e.target === 'string' ? e.target : e.target.id
-          }))}
-          draggable
-          layoutType="forceDirected2d"
-          // OVDJE: funkcija koja određuje strelicu po tipu veze
-          edgeArrowPosition={(edge: EdgeType) =>
-            edge.type === 'software-internet' || edge.type === 'internet-software'
-              ? 'end'
-              : 'none'
+        
+        edgeLabel={(edge: EdgeType) => {
+          const resolvedEdge = layoutedData.edges.find(e => e.id === edge.id);
+          if (!isResolvedEdge(resolvedEdge)) return '';
+          return getEdgeLabel(resolvedEdge);
+        }}
+        nodeStyle={(node: NodeType) => {
+            return {
+              fill: getGroupColor(node.group),
+              icon: {
+                url: node.icon || iconMap[node.type?.toLowerCase?.()] || '/icons/computer.png',
+                size: 48
+              },
+              label: {
+                color: '#5B88B2',
+                fontSize: 16,
+                visible: selectedNode?.id === node.id || hoveredNode?.id === node.id
+              },
+              borderRadius: 12,
+              padding: 6,
+              cursor: 'pointer'
+            };
+        }}
+        onNodeClick={(node: NodeType) => {
+          setSelectedNode(node); // uvijek otvori node panel za ID i tip
+
+          if (node.type === 'computer') {
+            setSelectedComputerId(node.id); // ako je computer otvori i editor panel
+          } else {
+            setSelectedComputerId(null); // ako nije, zatvori editor panel
           }
-          edgeStyle={(edge: EdgeType) => getEdgeStyle(edge, layoutedData.nodes)}
-          edgeLabel={(edge: EdgeType) => {
-            const resolvedEdge = layoutedData.edges.find(e => e.id === edge.id);
-            if (!isResolvedEdge(resolvedEdge)) return '';
-            return getEdgeLabel(resolvedEdge);
-          }}
-          nodeStyle={(node: NodeType) => ({
-            fill: getGroupColor(node.group),
-            icon: {
-              url: node.icon || iconMap[node.type?.toLowerCase?.()] || '/icons/computer.png',
-              size: 48
-            },
-            label: { color: '#5B88B2', fontSize: 16 },
-            borderRadius: 12, padding: 6, cursor: 'pointer'
-          })}
-          onNodeClick={(node: NodeType) => {
-            if (node.type === 'computer') {
-              setSelectedComputerId(node.id);
-              setSelectedNode(node);
-            } else {
-              setSelectedNode(null);
-            }
-            if (onNodeClick) onNodeClick(node);
-          }}
-          onCanvasClick={() => setSelectedNode(null)}
-          onNodePointerEnter={(node: NodeType) => setHoveredNode(node)}
-          onNodePointerLeave={() => setHoveredNode(null)}
-        />
+
+          if (onNodeClick) onNodeClick(node);
+        }}
+        onCanvasClick={() => {
+          setSelectedNode(null);
+          setSelectedComputerId(null);
+        }}
+        onNodePointerEnter={(node: NodeType) => setHoveredNode(node)}
+        onNodePointerLeave={() => setHoveredNode(null)}
+      />
+
       {selectedComputerId && (
         <div className={styles.shiftPanel}>
           <div className={styles.rowCenter}>
@@ -298,7 +328,16 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
       {selectedNode && (
         <div className={styles.nodePanel}>
           <h3>{selectedNode.label}</h3>
-          <p><strong>ID:</strong> {selectedNode.id}</p>
+          <p>
+            <strong>ID:</strong>{' '}
+            <span
+              className={isIdVisible ? `${styles.nodeId} ${styles.nodeIdVisible}` : styles.nodeId}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              {selectedNode.id}
+            </span>
+          </p>
           <p><strong>TYPE:</strong> {selectedNode.type}</p>
           {selectedNode.meta?.groupLabel && (
             <p><strong>NETWORK:</strong> {selectedNode.meta.groupLabel}</p>

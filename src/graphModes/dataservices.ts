@@ -196,8 +196,23 @@ export function filterDataservicesGraph(
     }
 
 
-    // 🔹 3. Filtriranje po group i type (finalni output)
-    const filtered = filterGraphStrictByGroup({ nodes, edges }, selectedGroup, selectedTypes);
+// 🔹 3. Filtriranje po group i type (finalni output)
+  if (!selectedGroup) {
+    let filteredNodes = nodes;
 
+    if (selectedTypes.size > 0) {
+      filteredNodes = filteredNodes.filter(n => selectedTypes.has(n.type));
+    }
+
+    const filteredIds = new Set(filteredNodes.map(n => n.id));
+    const filteredEdges = edges.filter(
+      e => filteredIds.has(e.source) && filteredIds.has(e.target)
+    );
+
+    return { nodes: filteredNodes, edges: filteredEdges };
+  } else {
+    // Ako je odabrana grupa, filtriraj pomoću filterGraphStrictByGroup
+    const filtered = filterGraphStrictByGroup({ nodes, edges }, selectedGroup, selectedTypes);
     return filtered;
+  }
 }

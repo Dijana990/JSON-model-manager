@@ -1,6 +1,10 @@
 import type { GraphData, NodeType, EdgeType } from '../types';
 import { applyForceAtlasLayout } from './graphUtils';
 
+function edgeExists(edges: EdgeType[], source: string, target: string) {
+  return edges.some(e => e.source === source && e.target === target);
+}
+
 // Dohvati sve grupe iz grafa (osim default/users)
 export function getAvailableGroups(data: GraphData): string[] {
   return Array.from(
@@ -43,6 +47,63 @@ export function getRelevantNodesByGroup(data: GraphData, group: string): NodeTyp
   return data.nodes.filter(n => relatedNodeIds.has(n.id));
 }
 
+function addUserSoftwareEdges(
+  nodes: NodeType[],
+  edges: EdgeType[],
+  allEdges: EdgeType[]
+): EdgeType[] {
+  const extraEdges: EdgeType[] = [];
+  const computers: { [key: string]: { users: string[]; software: string[] } } = {};
+
+  // Pronađi sva računala i njihove povezane korisnike i softver iz originalnog grafa
+  allEdges.forEach(edge => {
+    if (edge.type === 'computer-user') {
+      const computerId = edge.source;
+      const userId = edge.target;
+      if (!computers[computerId]) {
+        computers[computerId] = { users: [], software: [] };
+      }
+      computers[computerId].users.push(userId);
+    } else if (edge.type === 'computer-software') {
+      const computerId = edge.source;
+      const softwareId = edge.target;
+      if (!computers[computerId]) {
+        computers[computerId] = { users: [], software: [] };
+      }
+      computers[computerId].software.push(softwareId);
+    }
+  });
+
+  const nodeIds = new Set(nodes.map(n => n.id));
+
+  // Stvori virtualne veze za korisnike i softver na istom računalu
+  Object.values(computers).forEach(comp => {
+    comp.users.forEach(userId => {
+      if (nodeIds.has(userId)) {
+        comp.software.forEach(softwareId => {
+          if (nodeIds.has(softwareId)) {
+            const edgeExists = edges.some(
+              e =>
+                (e.source === userId && e.target === softwareId) ||
+                (e.source === softwareId && e.target === userId)
+            );
+            if (!edgeExists) {
+              extraEdges.push({
+                id: `virtual-${userId}-${softwareId}`,
+                source: userId,
+                target: softwareId,
+                type: 'user-software-virtual',
+              });
+            }
+          }
+        });
+      }
+    });
+  });
+
+  return extraEdges;
+}
+
 // Filtriraj čvorove i rubove po tipu i grupi (osnovno)
 export function filterGraphCommon(
   data: GraphData,
@@ -60,37 +121,14 @@ export function filterGraphCommon(
     e => filteredIds.has(e.source) && filteredIds.has(e.target)
   );
 
-  // Dodaj virtualne rubove za user-software (ako nema computer)
-  const extraEdges: EdgeType[] = [];
-  const addedEdgeIds = new Set<string>();
+  let extraEdges: EdgeType[] = [];
 
-  if (
-    selectedTypes.has('user') &&
-    selectedTypes.has('software') &&
-    !selectedTypes.has('computer')
-  ) {
-    filteredNodes.forEach(user => {
-      if (user.type !== 'user') return;
-      const userIdShort = user.id.replace(/^user-/, '');
-      filteredNodes.forEach(soft => {
-        if (soft.type === 'software' && soft.id.startsWith(userIdShort)) {
-          const id = `virtual-${user.id}-${soft.id}`;
-          // NOVO: provjeri postoji li već edge s istim source i target
-          const alreadyExists = [...filteredEdges, ...extraEdges].some(
-            (e) => e.source === user.id && e.target === soft.id
-          );
-          if (!alreadyExists && !addedEdgeIds.has(id)) {
-            extraEdges.push({
-              id,
-              source: user.id,
-              target: soft.id,
-              type: 'user-software-virtual',
-            });
-            addedEdgeIds.add(id);
-          }
-        }
-      });
-    });
+  if (selectedTypes.has('user') && selectedTypes.has('software')) {
+    extraEdges = addUserSoftwareEdges(
+      filteredNodes,
+      filteredEdges,
+      data.edges
+    );
   }
 
   return { nodes: filteredNodes, edges: [...filteredEdges, ...extraEdges] };
@@ -182,4 +220,77 @@ export function filterGraphStrictWithRelated(
   );
 
   return { nodes: filteredNodes, edges: filteredEdges };
+}
+
+
+
+
+
+
+
+export function filterGraphCredentialsCustom(
+  data: GraphData,
+  selectedGroup: string
+): { nodes: NodeType[]; edges: EdgeType[] } {
+  if (!selectedGroup) {
+    return { nodes: data.nodes, edges: data.edges };
+  }
+
+  const filteredNodes: NodeType[] = [];
+  const filteredEdges: EdgeType[] = [];
+
+  // ➡️ Pronađi sve nodeove u odabranoj grupi
+  const groupNodes = data.nodes.filter(n => n.group === selectedGroup);
+
+  // ➡️ Dodaj software, lock, key, computer nodeove iz te grupe
+  for (const node of groupNodes) {
+    if (['software', 'lock', 'key', 'computer'].includes(node.type)) {
+      filteredNodes.push(node);
+    }
+  }
+
+  // 🔹 PRIDODAJ: Dodaj lock/key čvorove koji nisu u grupi, ali su povezani sa software iz grupe
+  const softwareIdsInGroup = groupNodes.filter(n => n.type === 'software').map(n => n.id);
+
+  for (const edge of data.edges) {
+    if (edge.type === 'credential-software' && softwareIdsInGroup.includes(edge.target)) {
+      const lockKeyNode = data.nodes.find(n => n.id === edge.source && ['lock', 'key'].includes(n.type));
+      if (lockKeyNode && !filteredNodes.includes(lockKeyNode)) {
+        filteredNodes.push(lockKeyNode);
+      }
+      if (!edgeExists(filteredEdges, edge.source, edge.target)) {
+        filteredEdges.push(edge);
+      }
+    }
+  }
+
+  // 🔹 Dodaj user nodeove povezane na lock/key čvorove
+  const lockKeyIds = new Set(filteredNodes.filter(n => ['lock', 'key'].includes(n.type)).map(n => n.id));
+
+  for (const edge of data.edges) {
+    if (edge.type === 'credential-user' && lockKeyIds.has(edge.source)) {
+      const userNode = data.nodes.find(n => n.id === edge.target && n.type === 'user');
+      if (userNode && !filteredNodes.includes(userNode)) {
+        filteredNodes.push(userNode);
+      }
+      if (!edgeExists(filteredEdges, edge.source, edge.target)) {
+        filteredEdges.push(edge);
+      }
+    }
+  }
+
+  // ➡️ Dodaj sve edgeove između filtriranih nodeova
+  const filteredIds = new Set(filteredNodes.map(n => n.id));
+  for (const edge of data.edges) {
+    if (filteredIds.has(edge.source) && filteredIds.has(edge.target)) {
+      if (!edgeExists(filteredEdges, edge.source, edge.target)) {
+        filteredEdges.push(edge);
+      }
+    }
+  }
+
+  // ➡️ Ukloni duplikate edgeova
+  const uniqueEdges = Array.from(new Map(filteredEdges.map(e => [e.id, e])).values());
+
+  return { nodes: filteredNodes, edges: uniqueEdges };
 }

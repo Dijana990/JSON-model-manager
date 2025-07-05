@@ -61,6 +61,25 @@
   font-size: 14px;
 }
 
+/* NODE PANEL */
+.nodeId {
+  display: inline-block;
+  max-width: 200px; /* prilagodi po potrebi (npr. 150px) */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.nodeId:hover,
+.nodeIdVisible {
+  overflow: visible;
+  white-space: normal;
+  word-break: break-all;
+  max-width: none; /* ukloni ograničenje širine */
+  background-color: #f0f0f0; /* opcionalno, za bolji kontrast */
+  padding: 4px; /* opcionalno, za bolji izgled */
+}
+
 /* X GUMB ZA ZATVARANJE */
 .closeButton {
   position: absolute;

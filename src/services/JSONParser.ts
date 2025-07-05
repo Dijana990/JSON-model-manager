@@ -8,6 +8,18 @@
  */
 import type { GraphData, NodeType, EdgeType, Computer, Software } from '../types';
 
+
+// ✅ Nova pomoćna funkcija za grupiranje nodova po tipu i id-u
+export function getGroupFromNode(id: string, type: string): string {
+  if (type === 'computer') {
+    if (id === 'None:0:0') return 'server-00';
+    if (id.startsWith('None:')) return 'servers';
+    return 'users';
+  }
+  if (type === 'user') return 'users';
+  return 'default';
+}
+
 export function getCustomerLabel(binaryLabel: string): string {
   switch (binaryLabel) {
     case "Office": return "Office";
@@ -118,15 +130,6 @@ export function formatServerId(rawCompId: string): string {
   return rawCompId.replace(/:/g, '.');
 }
 
-function getGroupFromNode(id: string, type: string): string {
-  if (type === 'computer') {
-    if (id === 'None:0:0') return 'server-00';
-    if (id.startsWith('None:')) return 'servers';
-    return 'users';
-  }
-  if (type === 'user') return 'users';
-  return 'default';
-}
 
 export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystems = false): GraphData {
   if (!json?.computers || typeof json.computers !== 'object') {
@@ -232,24 +235,24 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
 
     if (hasPerson && personId) {
       const userNodeId = `user-${personId}`;
+      // 🔹 Uvijek stvaraj vezu između računala i korisničkog čvora (role)
       if (nodeIndex[userNodeId]) {
-        edges.push({ id: `edge-${compId}-${userNodeId}`, source: compId, target: userNodeId, type: 'computer-user' });
+        edges.push({ id: `edge-${userNodeId}-${compId}`, source: userNodeId, target: compId, type: 'user-computer' });
       } else {
-        if (!nodeIndex[personId]) {
-          nodeIndex[personId] = {
-            id: personId,
-            label: personId,
-            fullName: personId,
-            type: 'person',
-            icon: '/icons/user.png',
-            group: getGroupFromNode(personId, 'person'),
-            meta: {
-              originalUser: inputJson.people?.[personId] || null
-            }
-          };
-          nodes.push(nodeIndex[personId]);
-        }
-        edges.push({ id: `edge-${compId}-${personId}`, source: compId, target: personId, type: 'computer-person' });
+        // Fallback ako rola nije definirana u employee_groups - kreiraj user node
+        nodeIndex[userNodeId] = {
+          id: userNodeId,
+          label: personId,
+          fullName: `User role: ${personId}`,
+          type: 'user',
+          icon: '/icons/user.png',
+          group: getGroupFromNode(userNodeId, 'user'),
+          meta: {
+            originalUser: personId
+          }
+        };
+        nodes.push(nodeIndex[userNodeId]);
+        edges.push({ id: `edge-${userNodeId}-${compId}`, source: userNodeId, target: compId, type: 'user-computer' });
       }
     }
 

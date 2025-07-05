@@ -14,8 +14,15 @@ import type { ResolvedEdge } from './graphUtils';
 import type { EdgeType, NodeType } from '../types';
 
 export function getEdgeStyle(edge: EdgeType, nodes: NodeType[]) {
+  console.log('getEdgeStyle called', { edge, nodes });
   const sourceNode = nodes.find(n => n.id === edge.source);
   const targetNode = nodes.find(n => n.id === edge.target);
+
+  console.log('getEdgeStyle', {
+    edge,
+    sourceNode,
+    targetNode
+  });
 
   // Po icon propertyju
   const sourceIcon = sourceNode?.icon;
@@ -43,14 +50,14 @@ export function getEdgeStyle(edge: EdgeType, nodes: NodeType[]) {
     (sourceType === 'user' && targetType === 'computer') ||
     (sourceType === 'computer' && targetType === 'user')
   ) {
-    return { strokeDasharray: '6 4', stroke: '#888', strokeWidth: 2 };
+    return { stroke: 'red', strokeWidth: 2 };
   }
 
   if (
     (sourceType === 'computer' && targetType === 'binary') ||
     (sourceType === 'binary' && targetType === 'computer')
   ) {
-    return { stroke: 'red', strokeWidth: 2 };
+    return { stroke: 'blue', strokeWidth: 2 };
   }
 
   return { stroke: '#aaa', strokeWidth: 1 };

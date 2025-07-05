@@ -13,7 +13,7 @@
 export type NodeType = {
   id: string;
   label: string;
-  type: 'computer' | 'software' | 'service' | 'person' | 'network' | 'user-service' | string;
+  type: 'computer' | 'software' | 'service' | 'user' | 'network' | 'user-service' | string;
   group?: string;
   icon?: string;
   count?: number;
@@ -44,7 +44,7 @@ export type EdgeType = {
   | 'computer-software'
   | 'software-service'
   | 'software-user-service'
-  | 'computer-person'
+  | 'computer-user'
   | 'network-software'
   | 'network-computer'
   | string;
@@ -74,8 +74,8 @@ export enum GraphViewMode {
 };
 
 export interface Software {
-  person_index: number;
-  person_group_id: string | null;
+  user_index: number;
+  user_group_id: string | null;
   provides_user_services: string[];
   provides_network_services: string[];
   // ➕ dodaj po potrebi druge property-je (idn, cpe_idn itd.)
@@ -83,7 +83,7 @@ export interface Software {
 
 export interface Computer {
   installed_software: Record<string, Software>;
-  person_index: number;
+  user_index: number;
   provides_network_services: string[];
   network_idn: number[];
   // ➕ dodaj po potrebi druge property-je

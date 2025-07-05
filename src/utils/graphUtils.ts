@@ -161,8 +161,37 @@ export function getGroupColor(group: string | undefined): string {
     'users': '#FFF9C4',
     'default': '#E0E0E0'
   };
-  return group && colorMap[group] ? colorMap[group] : colorMap['default'];
+
+  if (group && colorMap[group]) {
+    return colorMap[group];
+  }
+
+    // ➡️ Ako grupa počinje s 'network.internal.', vrati neku generičku boju za sve network interne grupe
+  if (group && group.startsWith('network.internal.')) {
+    return '#D1C4E9'; // ljubičasta nijansa kao primjer
+  }
+  // Ako grupa nije definirana u colorMap, generiraj konzistentnu boju
+  if (group) {
+    return stringToColor(group);
+  }
+
+  return colorMap['default'];
 }
+
+// ➡️ Helper funkcija za hashiranje stringa u boju
+function stringToColor(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xFF;
+    color += ('00' + value.toString(16)).slice(-2);
+  }
+  return color;
+}
+
 
 /**
  * Mapiranje tipova čvorova u odgovarajuće ikone.
