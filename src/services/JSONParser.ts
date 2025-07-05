@@ -11,12 +11,16 @@ import type { GraphData, NodeType, EdgeType, Computer, Software } from '../types
 
 // ✅ Nova pomoćna funkcija za grupiranje nodova po tipu i id-u
 export function getGroupFromNode(id: string, type: string): string {
+  if (!type) return 'default';
   if (type === 'computer') {
     if (id === 'None:0:0') return 'server-00';
     if (id.startsWith('None:')) return 'servers';
     return 'users';
   }
   if (type === 'user') return 'users';
+  if (type === 'software') return 'software';
+  if (type === 'service') return 'services';
+  if (type === 'user-service') return 'user-services';
   return 'default';
 }
 
@@ -237,6 +241,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
       const userNodeId = `user-${personId}`;
       // 🔹 Uvijek stvaraj vezu između računala i korisničkog čvora (role)
       if (nodeIndex[userNodeId]) {
+        nodeIndex[userNodeId].group = networkGroup;
         edges.push({ id: `edge-${userNodeId}-${compId}`, source: userNodeId, target: compId, type: 'user-computer' });
       } else {
         // Fallback ako rola nije definirana u employee_groups - kreiraj user node
@@ -246,7 +251,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
           fullName: `User role: ${personId}`,
           type: 'user',
           icon: '/icons/user.png',
-          group: getGroupFromNode(userNodeId, 'user'),
+          group: networkGroup,
           meta: {
             originalUser: personId
           }
@@ -288,7 +293,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
           fullName: binaryFullName,
           type: 'software',
           icon: '/icons/binary.png',
-          group: getGroupFromNode(swId, 'software'),
+          group: networkGroup,
           provides_services: sw.provides_services || [],
           provides_network_services: sw.provides_network_services || [],
           meta: {
@@ -316,7 +321,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
             fullName: customerLabel,
             type: 'user-service',
             icon: '/icons/customer.png',
-            group: getGroupFromNode(customerId, 'user-service')
+            group: networkGroup
           };
           nodes.push(nodeIndex[customerId]);
         }
@@ -333,7 +338,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
             fullName: serviceName,
             type: 'service',
             icon: '/icons/service.png',
-            group: getGroupFromNode(serviceId, 'service'),
+            group: networkGroup,
             meta: {
               originalService: inputJson.services?.[serviceId] || null
             }
@@ -354,7 +359,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
             fullName: `${serviceName}-${compId}`,
             type: 'service',
             icon: '/icons/service.png',
-            group: getGroupFromNode(serviceId, 'service')
+            group: networkGroup
           };
           nodes.push(nodeIndex[serviceId]);
         }
@@ -382,6 +387,5 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
     if (!coords) return node;
     return { ...node, x: coords.x + (Math.random() * 200 - 100), y: coords.y + (Math.random() * 200 - 100) };
   });
-
   return { nodes: nodesWithCoordinates, edges };
 }

@@ -43,3 +43,5 @@ old_files
 # backend/app.py
 # src/components/loginform.tsx
 # src/components/signupform.tsx
+
+src/components/GraphErrorBoundary.tsx

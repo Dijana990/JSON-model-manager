@@ -57,22 +57,20 @@ export function filterCredentialsGraph(
     if (!showCredential) continue;
 
     // ✅ ➔ Odredi group za credential node na temelju network_idn storedAt computera
-    let credGroup = 'credentials';
+    let credGroup = 'no-network';
     if (storedAt.length > 0) {
       const compId = storedAt[0];
       const comp = inputJson.computers?.[compId];
       const networkIds = comp?.network_idn || [];
-
       if (networkIds.length > 0) {
         credGroup = `network.internal.${networkIds.join('_')}`;
-      } else {
-        credGroup = 'no-network';
       }
     }
 
-    // ➔ Add credential node s grupom
+    // ➔ Izračunaj shortCredLabel prije korištenja
     const shortCredLabel = credId.split('@')[0].split(':').pop()?.split('#')[0] || credId;
 
+    // ➔ Add credential node s grupom + meta.credentialGroup
     const credNode: NodeType = {
       id: credId,
       label: (nodeType === 'key' || nodeType === 'lock') ? '' : shortCredLabel,
@@ -80,8 +78,12 @@ export function filterCredentialsGraph(
       type: nodeType,
       icon: nodeIcon,
       group: credGroup,
-      meta: { originalCredential: cred }
+      meta: {
+        originalCredential: cred,
+        credentialGroup: 'credentials' // oznaka za stilizaciju ili filtere
+      }
     };
+
     nodes.push(credNode);
     nodeIndex[credId] = credNode;
 
@@ -91,6 +93,17 @@ export function filterCredentialsGraph(
         const empId = Array.isArray(emp) ? emp[0] : emp;
         if (!empId) continue;
 
+        // ➡️ Pronađi računalo gdje je pohranjen credential
+        let userGroup = 'no-network';
+        if (storedAt.length > 0) {
+          const compId = storedAt[0];
+          const comp = inputJson.computers?.[compId];
+          const networkIds = comp?.network_idn || [];
+          if (networkIds.length > 0) {
+            userGroup = `network.internal.${networkIds.join('_')}`;
+          }
+        }
+
         if (!nodeIndex[empId]) {
           const empNode: NodeType = {
             id: empId,
@@ -98,7 +111,7 @@ export function filterCredentialsGraph(
             fullName: empId,
             type: 'user',
             icon: '/icons/user.png',
-            group: 'users'
+            group: ''
           };
           nodes.push(empNode);
           nodeIndex[empId] = empNode;
@@ -196,8 +209,59 @@ export function filterCredentialsGraph(
     edges.push(...typeFilteredEdges);
   }
 
+  if (!nodes.some(n => n.type === 'key' || n.type === 'lock')) {
+    // 🔹 Add virtual user-software edges based on installed_software.person_group_id
+    for (const comp of Object.values(inputJson.computers || {}) as any[]) {
+      const installedSoftware = comp.installed_software || {};
+
+      for (const [swId, sw] of Object.entries(installedSoftware) as [string, any][]) {
+        const personGroupId = sw.person_group_id;
+        if (!personGroupId) continue;
+        if (Number(sw.person_index) !== 0) continue;
+
+        // ➔ Pronađi userNode u nodes prema person_group_id (možda treba prefiks ako ih generiraš kao user-${personGroupId})
+        const userNode = nodes.find(n =>
+          n.type === 'user' &&
+          (n.id === personGroupId || n.id === `user-${personGroupId}`)
+        );
+
+        // ➔ Pronađi softwareNode po fullName (u credential view sw.id može biti compId_label, pa koristi includes)
+        const swNode = nodes.find(n =>
+          n.type === 'software' &&
+          (n.fullName === swId || n.id.includes(swId))
+        );
+
+        if (userNode && swNode && !edgeExists(edges, userNode.id, swNode.id)) {
+          edges.push({
+            id: `edge-${userNode.id}-${swNode.id}`,
+            source: userNode.id,
+            target: swNode.id,
+            type: 'user-software-virtual'
+          });
+        }
+      }
+    }
+
+    // 🔹 Add virtual computer-software edges
+    for (const node of nodes) {
+      if (node.type !== 'software') continue;
+
+      const swNode = node;
+      const compIdPart = swNode.id.split('_')[0];
+      const compNode = nodeIndex[compIdPart];
+
+      if (compNode && compNode.type === 'computer' && !edgeExists(edges, compNode.id, swNode.id)) {
+        edges.push({
+          id: `edge-${compNode.id}-${swNode.id}`,
+          source: compNode.id,
+          target: swNode.id,
+          type: 'computer-software-virtual'
+        });
+      }
+    }
+  }
+    
   // 🔹 Filter final output
   const filtered = filterGraphCredentialsCustom({ nodes, edges }, selectedGroup);
-
   return filtered;
 }

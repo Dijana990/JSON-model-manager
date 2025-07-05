@@ -44,7 +44,7 @@ export function filterFirewallsGraph(
     fullName: 'Internet',
     type: 'internet',
     icon: '/icons/internet.png',
-    group: 'internet'
+    group: ''
   });
 
   const firewallRules = inputJson?.firewall_rules || inputJson?.data?.firewall_rules || {};

@@ -9,12 +9,11 @@ import { filterFirewallsGraph } from '../graphModes/firewalls';
 import { filterDataservicesGraph } from '../graphModes/dataservices';
 import { filterCredentialsGraph } from '../graphModes/credentials';
 import { filterLandscapeGraph } from '../graphModes/landscape';
+import GraphErrorBoundary from './GraphErrorBoundary';
 import {
   isResolvedEdge,
-  applyForceAtlasLayout,
   resolveEdgeNodes,
   shiftConnectedNodes,
-  getGroupColor,
   iconMap,
   simplifyGraph
 } from '../utils/graphUtils';
@@ -32,6 +31,18 @@ interface GraphCanvasComponentProps {
   setSelectedTypes: React.Dispatch<React.SetStateAction<Set<string>>>;
 }
 
+function manualLayout(nodes: NodeType[]): NodeType[] {
+  const spacingX = 500;
+  const spacingY = 500;
+
+  return nodes.map((node, index) => ({
+    ...node,
+    x: (index % 5) * spacingX, // 5 čvorova po redu
+    y: Math.floor(index / 5) * spacingY,
+    z: 0
+  }));
+}
+
 const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
   data,
   inputJson,
@@ -45,9 +56,9 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
  
   const ref = useRef<any>(null);
   const preparedData = useMemo(() => prepareGraph(data), [data]);
-  const [layoutedData, setLayoutedData] = useState<GraphDataWithResolvedEdges>(() => {
-    const rawLayouted = applyForceAtlasLayout(preparedData);
-    return rawLayouted;
+  const [layoutedData, setLayoutedData] = useState<GraphDataWithResolvedEdges>({
+    nodes: preparedData.nodes,
+    edges: preparedData.edges as any // ili prilagodi tipizaciji ako treba
   });
   const [filteredData, setFilteredData] = useState<GraphData>({ nodes: [], edges: [] });
   const [hoveredNode, setHoveredNode] = useState<NodeType | null>(null);
@@ -91,13 +102,40 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
     URL.revokeObjectURL(url);
   };
 
+  const mappedNodes = manualLayout(layoutedData.nodes).map(n => ({
+    ...n,
+    data: {
+      ...n.data,
+      group: typeof n.group === 'string'
+        ? n.group
+        : (typeof n.networkGroup === 'string'
+            ? n.networkGroup
+            : 'no-group')
+    }
+  }));
+
   // ➡️ Postavi dostupne grupe prilikom učitavanja data
   useEffect(() => {
-    setAvailableGroups(getAvailableGroups(preparedData));
-    const layouted = applyForceAtlasLayout(preparedData);
-    setLayoutedData(layouted);
+    setLayoutedData({
+      nodes: preparedData.nodes,
+      edges: preparedData.edges as any
+    });
+
     setTimeout(() => ref.current?.zoomToFit?.(), 200);
   }, [data]);
+
+  useEffect(() => {
+    // Uvijek koristi preparedData.nodes za dropdown
+    const nodesToProcess = preparedData.nodes;
+
+    let groups = getAvailableGroups({ nodes: nodesToProcess, edges: [] });
+
+  if (viewMode === 'firewalls' || viewMode === 'landscape' || viewMode === 'dataservices') {
+    groups = groups.filter(g => g && g.startsWith('network.internal.'));
+  }
+
+    setAvailableGroups(groups);
+  }, [preparedData, viewMode]);
 
   // ➡️ Filtriraj i layoutaj graf kad se promijeni filter
   useEffect(() => {
@@ -114,16 +152,12 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
     }
 
     const { nodes, edges } = filteredResult;
-    setFilteredData({ nodes, edges });
-
-    if (nodes.length === 0) {
-      const layouted = applyForceAtlasLayout(preparedData);
-      setLayoutedData(layouted);
-      return;
-    }
-
-    const layouted = applyForceAtlasLayout({ nodes, edges });
-    setLayoutedData(layouted);
+    const layoutedNodes = manualLayout(nodes);
+    setFilteredData({ nodes: layoutedNodes, edges });
+    setLayoutedData({
+      nodes,
+      edges: edges as any // prilagodi tipizaciji ako treba
+    });
   }, [viewMode, selectedGroup, selectedTypes, preparedData, inputJson]);
 
   // ➡️ Resetiraj selectedTypes prilikom promjene grupe
@@ -136,7 +170,23 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
     setSelectedGroup("");
     setSelectedTypes(new Set());
   }, [viewMode]);
-  
+
+  useEffect(() => {
+    if (selectedGroup && ref.current) {
+      // ➡️ Filtriraj nodeove iz odabrane grupe
+      const groupNodes = mappedNodes.filter(n => n.group === selectedGroup);
+
+      if (groupNodes.length > 0) {
+        // ➡️ Izračunaj centar grupe
+        const avgX = groupNodes.reduce((sum, n) => sum + (n.x || 0), 0) / groupNodes.length;
+        const avgY = groupNodes.reduce((sum, n) => sum + (n.y || 0), 0) / groupNodes.length;
+
+        // ➡️ Pomakni kameru na centar grupe
+        ref.current?.zoomToFit?.(); // 500 ili prilagodi zoom
+      }
+    }
+  }, [selectedGroup, mappedNodes]);
+
   // ➡️ Izračunaj availableTypes direktno u render funkciji (KONAČNA VERZIJA)
   let types: string[] = [];
 
@@ -175,7 +225,32 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
     newSet.has(type) ? newSet.delete(type) : newSet.add(type);
     setSelectedTypes(newSet);
   };
-  
+
+
+
+  const allNodesHaveGroup = mappedNodes.every(n => typeof n.group === 'string');
+  if (!allNodesHaveGroup) {
+    console.error('❌ Neki nodeovi nemaju group property!');
+  }
+
+  const nodeIds = new Set(mappedNodes.map(n => n.id));
+
+
+  const validEdges = layoutedData.edges.filter(e => {
+    const srcId = typeof e.source === 'string' ? e.source : e.source?.id;
+    const tgtId = typeof e.target === 'string' ? e.target : e.target?.id;
+    const valid = nodeIds.has(srcId) && nodeIds.has(tgtId);
+    if (!valid) {
+      console.warn('⚠️ Removing invalid edge with missing node', e);
+    }
+    return valid;
+  });
+
+  // ➡️ Odredi hoće li se koristiti clusterAttribute
+  const enableClustering = !selectedGroup || selectedGroup === '';
+
+  const clusterAttribute = enableClustering ? 'group' : undefined;
+
   return (
     <div className={styles.container}>
       {showFilterPanel ? (
@@ -238,17 +313,24 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
         }}
         onCancel={() => setSelectedNode(null)}
       />
-      
+
       <GraphCanvas
+        key={`${viewMode}-${selectedGroup || 'all'}`}
         ref={ref}
-        nodes={layoutedData.nodes}
-        edges={layoutedData.edges.map((e) => ({
+        nodes={mappedNodes}
+        edges={validEdges.map((e) => ({
           ...e,
           source: typeof e.source === 'string' ? e.source : e.source.id,
           target: typeof e.target === 'string' ? e.target : e.target.id
         }))}
+        clusterAttribute={clusterAttribute}
         draggable
         layoutType="forceDirected2d"
+        layoutOverrides={{
+          distanceMin: 500, // default je često 1-20
+          nodeStrength: -500, // negativno odbija čvorove, default je -30 ili slično
+          collideRadius: 500, // veća vrijednost sprječava preklapanje
+        }}
         edgeArrowPosition={(edge: EdgeType) =>
           edge.type === 'software-internet' || edge.type === 'internet-software'
             ? 'end'
@@ -264,7 +346,6 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
         }}
         nodeStyle={(node: NodeType) => {
             return {
-              fill: getGroupColor(node.group),
               icon: {
                 url: node.icon || iconMap[node.type?.toLowerCase?.()] || '/icons/computer.png',
                 size: 48
@@ -279,6 +360,7 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
               cursor: 'pointer'
             };
         }}
+        
         onNodeClick={(node: NodeType) => {
           setSelectedNode(node); // uvijek otvori node panel za ID i tip
 
@@ -335,7 +417,7 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
               onMouseEnter={handleMouseEnter}
               onMouseLeave={handleMouseLeave}
             >
-              {selectedNode.id}
+              {selectedNode.fullName || selectedNode.id}
             </span>
           </p>
           <p><strong>TYPE:</strong> {selectedNode.type}</p>

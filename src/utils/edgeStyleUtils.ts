@@ -14,15 +14,8 @@ import type { ResolvedEdge } from './graphUtils';
 import type { EdgeType, NodeType } from '../types';
 
 export function getEdgeStyle(edge: EdgeType, nodes: NodeType[]) {
-  console.log('getEdgeStyle called', { edge, nodes });
   const sourceNode = nodes.find(n => n.id === edge.source);
   const targetNode = nodes.find(n => n.id === edge.target);
-
-  console.log('getEdgeStyle', {
-    edge,
-    sourceNode,
-    targetNode
-  });
 
   // Po icon propertyju
   const sourceIcon = sourceNode?.icon;

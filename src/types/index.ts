@@ -15,6 +15,8 @@ export type NodeType = {
   label: string;
   type: 'computer' | 'software' | 'service' | 'user' | 'network' | 'user-service' | string;
   group?: string;
+  data?: Record<string, any>;
+  networkGroup?: string;
   icon?: string;
   count?: number;
   fullName?: string;
@@ -33,6 +35,7 @@ export type NodeType = {
     [key: string]: any;
   };
   software?: string[];
+
 };
 
 export type EdgeType = {

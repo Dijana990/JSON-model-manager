@@ -96,7 +96,7 @@ export function filterDataservicesGraph(
                 fullName: dsId,
                 type: 'dataservice',
                 icon: '/icons/database.png',
-                group: 'dataservices',
+                group: '',
                 meta: { originalDataservice: ds }
             };
             nodes.push(dsNode);
@@ -178,7 +178,7 @@ export function filterDataservicesGraph(
                     fullName: userId,
                     type: 'user',
                     icon: '/icons/user.png',
-                    group: 'users'
+                    group: ''
                 };
                 nodes.push(userNode);
                 nodeIndex[userId] = userNode;
@@ -196,23 +196,60 @@ export function filterDataservicesGraph(
     }
 
 
-// 🔹 3. Filtriranje po group i type (finalni output)
-  if (!selectedGroup) {
+    // 🔹 3. Filtriranje po group i type (finalni output)
+    if (!selectedGroup) {
     let filteredNodes = nodes;
 
     if (selectedTypes.size > 0) {
-      filteredNodes = filteredNodes.filter(n => selectedTypes.has(n.type));
+        filteredNodes = filteredNodes.filter(n => selectedTypes.has(n.type));
     }
 
     const filteredIds = new Set(filteredNodes.map(n => n.id));
+
+    // ➔ Add virtual user-software edges if no dataservice type is selected
+    if (!selectedTypes.has('dataservice')) {
+        const dataserviceSoftwareIds = new Set<string>();
+        for (const [dsId, ds] of Object.entries(inputJson.data || {}) as [string, any][]) {
+        const linkedSoftware = ds.linked_software || [];
+        for (const swId of linkedSoftware) {
+            dataserviceSoftwareIds.add(swId.split('#')[0]);
+        }
+        }
+
+        for (const userNode of nodes) {
+        if (userNode.type !== 'user') continue;
+
+        for (const swNode of nodes) {
+            if (swNode.type !== 'software') continue;
+
+            const swCpeIdn = swNode.meta?.originalSoftware?.cpe_idn;
+            if (
+            swNode.id.startsWith(userNode.id + ":0:1>") &&
+            dataserviceSoftwareIds.has(swCpeIdn)
+            ) {
+            if (!edgeExists(edges, userNode.id, swNode.id)) {
+                edges.push({
+                id: `edge-${userNode.id}-${swNode.id}`,
+                source: userNode.id,
+                target: swNode.id,
+                type: 'user-software-virtual'
+                });
+            }
+            }
+        }
+        }
+    }
+
+    // ➔ Filtriraj edges nakon dodavanja virtualnih veza
     const filteredEdges = edges.filter(
-      e => filteredIds.has(e.source) && filteredIds.has(e.target)
+        e => filteredIds.has(e.source) && filteredIds.has(e.target)
     );
 
     return { nodes: filteredNodes, edges: filteredEdges };
-  } else {
+
+    } else {
     // Ako je odabrana grupa, filtriraj pomoću filterGraphStrictByGroup
     const filtered = filterGraphStrictByGroup({ nodes, edges }, selectedGroup, selectedTypes);
     return filtered;
-  }
+    }
 }

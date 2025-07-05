@@ -1,5 +1,4 @@
 import type { GraphData, NodeType, EdgeType } from '../types';
-import { applyForceAtlasLayout } from './graphUtils';
 
 function edgeExists(edges: EdgeType[], source: string, target: string) {
   return edges.some(e => e.source === source && e.target === target);
@@ -132,11 +131,6 @@ export function filterGraphCommon(
   }
 
   return { nodes: filteredNodes, edges: [...filteredEdges, ...extraEdges] };
-}
-
-// Layout helper
-export function layoutGraph(nodes: NodeType[], edges: EdgeType[]) {
-  return applyForceAtlasLayout({ nodes, edges });
 }
 
 export function filterGraphStrictByGroup(
