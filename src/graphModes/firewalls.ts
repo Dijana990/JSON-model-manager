@@ -162,6 +162,15 @@ export function filterFirewallsGraph(
             const fullToSoftwareId = `${toCompId}>${toSwId}`;
             const toSw = toComp?.installed_software?.[fullToSoftwareId];
 
+          if (to === 'INTERNET') {
+            addEdge({
+              id: `edge-${fromSwId}-${INTERNET_NODE_ID}`,
+              source: fromSwId,
+              target: INTERNET_NODE_ID,
+              type: 'internet'
+            });
+          }
+
           if (!toComp || !toSw) continue;
 
           // ➡️ Add toComp node

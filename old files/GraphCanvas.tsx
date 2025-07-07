@@ -489,7 +489,6 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({ data, onNod
           }))}
           draggable
           layoutType="forceDirected2d"
-          edgeArrowPosition="none"
           // 2. Za stilove koristi originalne edge objekte koji imaju source/target kao objekte
           edgeStyle={(edge: EdgeType) => getEdgeStyle(edge, layoutedData.nodes)}
 

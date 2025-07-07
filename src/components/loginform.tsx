@@ -95,7 +95,6 @@ export default function LoginForm({ onFlip }: Props) {
       })
         .then((res) => res.json())
         .then((data) => {
-          console.log('LOGIN RESPONSE:', data)
 
           if (data.access_token) {
             localStorage.setItem('token', data.access_token)

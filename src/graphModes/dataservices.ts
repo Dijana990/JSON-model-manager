@@ -1,4 +1,4 @@
-import type { NodeType, EdgeType, Software } from '../types';
+import type { NodeType, EdgeType } from '../types';
 import { getBinaryLabel, formatServerId } from '../services/JSONParser';
 import { filterGraphStrictByGroup } from '../utils/common';
 
@@ -15,6 +15,7 @@ export function filterDataservicesGraph(
     selectedGroup: string = '',
     selectedTypes: Set<string> = new Set()
 ): { nodes: NodeType[]; edges: EdgeType[] } {
+
     const nodes: NodeType[] = [];
     const edges: EdgeType[] = [];
     const nodeIndex: Record<string, NodeType> = {};
@@ -145,7 +146,7 @@ export function filterDataservicesGraph(
             }
 
             if (!foundAtLeastOne) {
-                 console.warn(`⚠️ Dataservice ${dsId} has linked_software ${swId} but no valid matching computer/software.`);
+                 console.warn(`Dataservice ${dsId} has linked_software ${swId} but no valid matching computer/software.`);
             }
         }
 

@@ -55,7 +55,6 @@ export function filterCredentialsGraph(
     }
 
     if (!showCredential) continue;
-
     // ✅ ➔ Odredi group za credential node na temelju network_idn storedAt computera
     let credGroup = 'no-network';
     if (storedAt.length > 0) {

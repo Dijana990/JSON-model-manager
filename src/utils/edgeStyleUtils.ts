@@ -1,7 +1,6 @@
 /**
  * Pomoćne funkcije za stilizaciju i označavanje bridova u grafu.
  *
- * - `getEdgeStyle`: definira stil bridova na temelju tipa čvorova ili njihovih ikona.
  *   Koristi se za vizualno razlikovanje vrsta veza (npr. korisnik ↔ računalo, računalo ↔ softver).
  *
  * - `getEdgeLabel`: vraća oznaku (labelu) bridova ovisno o tipu izvorišnog i odredišnog čvora.
@@ -13,65 +12,149 @@
 import type { ResolvedEdge } from './graphUtils';
 import type { EdgeType, NodeType } from '../types';
 
-export function getEdgeStyle(edge: EdgeType, nodes: NodeType[]) {
-  const sourceNode = nodes.find(n => n.id === edge.source);
-  const targetNode = nodes.find(n => n.id === edge.target);
-
-  // Po icon propertyju
-  const sourceIcon = sourceNode?.icon;
-  const targetIcon = targetNode?.icon;
-
-  if (
-    (sourceIcon === '/icons/user.png' && targetIcon === '/icons/computer.png') ||
-    (sourceIcon === '/icons/computer.png' && targetIcon === '/icons/user.png')
-  ) {
-    return { strokeDasharray: '6 4', stroke: '#888', strokeWidth: 2 };
-  }
-
-  if (
-    (sourceIcon === '/icons/computer.png' && targetIcon === '/icons/binary.png') ||
-    (sourceIcon === '/icons/binary.png' && targetIcon === '/icons/computer.png')
-  ) {
-    return { stroke: 'red', strokeWidth: 2 };
-  }
-
-  // Po type propertyju (ako nemaš icon)
-  const sourceType = sourceNode?.type;
-  const targetType = targetNode?.type;
-
-  if (
-    (sourceType === 'user' && targetType === 'computer') ||
-    (sourceType === 'computer' && targetType === 'user')
-  ) {
-    return { stroke: 'red', strokeWidth: 2 };
-  }
-
-  if (
-    (sourceType === 'computer' && targetType === 'binary') ||
-    (sourceType === 'binary' && targetType === 'computer')
-  ) {
-    return { stroke: 'blue', strokeWidth: 2 };
-  }
-
-  return { stroke: '#aaa', strokeWidth: 1 };
+function extractFullCpeIdn(fullName: string): string {
+  return fullName.includes('>') ? fullName.split('>').pop() || '' : fullName;
 }
 
-export function getEdgeLabel(edge: ResolvedEdge) {
-  const sourceType = edge.source.type;
-  const targetType = edge.target.type;
+export function getGraphConfig(viewMode: string) {
+  const commonEdgeStyle = (edge: EdgeType, allNodes: NodeType[]) => {
+    const sourceNode = allNodes.find(n => n.id === edge.source);
+    const targetNode = allNodes.find(n => n.id === edge.target);
 
-  if (
-    (sourceType === 'user' && targetType === 'computer') ||
-    (sourceType === 'computer' && targetType === 'user')
-  ) {
-    return 'User Interaction';
+    if (!sourceNode || !targetNode) {
+      return { strokeWidth: 1, opacity: 1, arrowPosition: 'end' };
+    }
+
+    switch (viewMode) {
+      case 'landscape':
+        if (
+          (sourceNode.type === 'user' && targetNode.type === 'computer') ||
+          (sourceNode.type === 'computer' && targetNode.type === 'user')
+        ) {
+          return { strokeWidth: 1, opacity: 1, arrowPosition: 'end' };
+        }
+        break;
+
+      case 'firewalls':
+        if (
+          (sourceNode.type === 'computer' && targetNode.type === 'software') ||
+          (sourceNode.type === 'software' && targetNode.type === 'computer')
+        ) {
+          return { strokeWidth: 1, opacity: 1, arrowPosition: 'end' };
+        }
+        break;
+
+      case 'credentials':
+        if (
+          (sourceNode.type === 'key' || sourceNode.type === 'lock') &&
+          targetNode.type === 'computer'
+        ) {
+          return { strokeWidth: 2, opacity: 1, arrowPosition: 'mid' };
+        }
+        // ➡️ Sve ostale veze u credentials prikazu
+        return { strokeWidth: 1, opacity: 1, arrowPosition: 'end' };
+
+      case 'dataservices':
+        if (
+          (sourceNode.type === 'user' && targetNode.type === 'dataservice') ||
+          (sourceNode.type === 'dataservice' && targetNode.type === 'user')
+        ) {
+          return { strokeWidth: 1, opacity: 1, arrowPosition: 'nend' };
+        }
+        break;
+    }
+
+    // Default ➔ no arrow + linear
+    return { strokeWidth: 1, opacity: 1, arrowPosition: 'end' };
+  };
+
+  return {
+    edgeStyle: commonEdgeStyle
+  };
+}
+
+
+export function getEdgeSize(edge: EdgeType | ResolvedEdge, nodes: NodeType[], viewMode: string) {
+  const sourceId = typeof edge.source === 'string' ? edge.source : edge.source.id;
+  const targetId = typeof edge.target === 'string' ? edge.target : edge.target.id;
+
+  const sourceNode = nodes.find(n => n.id === sourceId);
+  const targetNode = nodes.find(n => n.id === targetId);
+
+  if (!sourceNode || !targetNode) return 1;
+
+  // ➡️ Ako je user uključen, debljina = 1
+  if (sourceNode.type === 'user' || targetNode.type === 'user') {
+    return 1;
   }
 
-  if (
-    (sourceType === 'computer' && targetType === 'software') ||
-    (sourceType === 'software' && targetType === 'computer')
-  ) {
-    return 'Software Interaction';
+  // ➡️ Primjeri za dataservices prikaz
+  if (viewMode === 'dataservices') {
+    if (
+      sourceNode.type === 'dataservice' &&
+      targetNode.type === 'software'
+    ) {
+      const principalId = sourceNode.meta?.originalDataservice?.principal_software;
+      const targetFullName = targetNode.fullName || targetNode.id;
+      const targetCpeIdn = extractFullCpeIdn(targetFullName);
+
+      // ➡️ Ako je targetNode upravo principal_software ovog dataservice ➔ debljina 4
+      if (principalId && targetCpeIdn && targetCpeIdn === principalId) {
+        return 2;
+      }
+    }
+  }
+
+  // ➡️ Primjeri za specifične veze u credentials prikaz
+  if (viewMode === 'credentials') {
+    if (
+      (sourceNode.type === 'key' || sourceNode.type === 'lock') &&
+      targetNode.type === 'computer'
+    ) {
+      return 2;
+    }
+  }
+
+  return 1;
+}
+
+
+export function getEdgeLabelDirect(edge: EdgeType | ResolvedEdge, nodes: NodeType[], viewMode?: string) {
+  let sourceNode: NodeType | undefined;
+  let targetNode: NodeType | undefined;
+
+  if (typeof edge.source === 'string') {
+    sourceNode = nodes.find(n => n.id === edge.source);
+  } else {
+    sourceNode = edge.source;
+  }
+
+  if (typeof edge.target === 'string') {
+    targetNode = nodes.find(n => n.id === edge.target);
+  } else {
+    targetNode = edge.target;
+  }
+
+  if (!sourceNode || !targetNode) return '';
+
+  // FIREWALLS: computer ↔ software
+  if (viewMode === 'firewalls') {
+    if (
+      (sourceNode.type === 'computer' && targetNode.type === 'software') ||
+      (sourceNode.type === 'software' && targetNode.type === 'computer')
+    ) {
+      return { strokeWidth: 1, opacity: 1, arrowPosition: 'none' };
+    }
+  }
+
+  
+  // 🔹 Default: user
+  if (sourceNode.type === 'user') {
+    return sourceNode.label || sourceNode.id;
+  }
+
+  if (targetNode.type === 'user') {
+    return targetNode.label || targetNode.id;
   }
 
   return '';

@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { GraphCanvas } from 'reagraph';
+import { useSelection, type GraphCanvasRef } from 'reagraph';
 import type { GraphData, NodeType, EdgeType } from '../types';
-import { getEdgeStyle, getEdgeLabel } from '../utils/edgeStyleUtils';
-import type { GraphDataWithResolvedEdges } from '../utils/graphUtils';
+import { getEdgeSize, getGraphConfig } from '../utils/edgeStyleUtils';
+import type { GraphDataWithResolvedEdges, ResolvedEdge } from '../utils/graphUtils';
+import { getEdgeLabelDirect } from '../utils/edgeStyleUtils';
 import ComputerEditorPanel from './ComputerEditorPanel';
 import { prepareGraph } from '../utils/prepareGraph';
 import { filterFirewallsGraph } from '../graphModes/firewalls';
 import { filterDataservicesGraph } from '../graphModes/dataservices';
 import { filterCredentialsGraph } from '../graphModes/credentials';
 import { filterLandscapeGraph } from '../graphModes/landscape';
-import GraphErrorBoundary from './GraphErrorBoundary';
+import { parseJSONToGraph } from '../services/JSONParser';
 import {
   isResolvedEdge,
   resolveEdgeNodes,
@@ -46,15 +48,16 @@ function manualLayout(nodes: NodeType[]): NodeType[] {
 const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
   data,
   inputJson,
-  onNodeClick,
   viewMode,
   selectedGroup,
   setSelectedGroup,
   selectedTypes,
-  setSelectedTypes
+  setSelectedTypes,
+  onNodeClick: externalOnNodeClick
 }) => {
  
-  const ref = useRef<any>(null);
+  const graphRef = useRef<any>(null);
+
   const preparedData = useMemo(() => prepareGraph(data), [data]);
   const [layoutedData, setLayoutedData] = useState<GraphDataWithResolvedEdges>({
     nodes: preparedData.nodes,
@@ -114,6 +117,34 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
     }
   }));
 
+  const parsedGraph = useMemo(() => parseJSONToGraph(inputJson, inputJson, true), [inputJson]);
+  const nodeIds = new Set(mappedNodes.map(n => n.id));
+
+  const validEdges = layoutedData.edges.filter(e => {
+    const srcId = typeof e.source === 'string' ? e.source : e.source?.id;
+    const tgtId = typeof e.target === 'string' ? e.target : e.target?.id;
+    
+    const valid = nodeIds.has(srcId) && nodeIds.has(tgtId);
+    if (!valid) {
+      console.warn('Removing invalid edge with missing node', e);
+    }
+    return valid;
+  });
+
+  const {
+    selections,
+    actives,
+    activeEdges,
+    onNodeClick: handleSelectionNodeClick,
+    onCanvasClick: handleSelectionCanvasClick
+  } = useSelection({
+    ref: graphRef,
+    nodes: mappedNodes,
+    edges: validEdges,
+    pathSelectionType: 'all'
+  });
+
+
   // ➡️ Postavi dostupne grupe prilikom učitavanja data
   useEffect(() => {
     setLayoutedData({
@@ -121,7 +152,7 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
       edges: preparedData.edges as any
     });
 
-    setTimeout(() => ref.current?.zoomToFit?.(), 200);
+    setTimeout(() => graphRef.current?.zoomToFit?.(), 200);
   }, [data]);
 
   useEffect(() => {
@@ -171,21 +202,35 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
     setSelectedTypes(new Set());
   }, [viewMode]);
 
+  // ➡️ Resetiraj hoveredNode prilikom promjene viewMode
   useEffect(() => {
-    if (selectedGroup && ref.current) {
+    setHoveredNode(null);
+    setSelectedNode(null);
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (selectedGroup && graphRef.current) {
       // ➡️ Filtriraj nodeove iz odabrane grupe
       const groupNodes = mappedNodes.filter(n => n.group === selectedGroup);
 
       if (groupNodes.length > 0) {
-        // ➡️ Izračunaj centar grupe
+        // ➡️ Izračunaj centar grupe (nije obavezno ako koristiš zoomToFit, ali možeš za custom zoom)
         const avgX = groupNodes.reduce((sum, n) => sum + (n.x || 0), 0) / groupNodes.length;
         const avgY = groupNodes.reduce((sum, n) => sum + (n.y || 0), 0) / groupNodes.length;
 
-        // ➡️ Pomakni kameru na centar grupe
-        ref.current?.zoomToFit?.(); // 500 ili prilagodi zoom
+        // ➡️ Pomakni kameru na centar grupe (ako želiš custom centriranje)
+        // graphRef.current?.setCamera({ x: avgX, y: avgY, zoom: 1.5 }); // alternativno
+
+        // ➡️ Automatski zoomToFit da se svi nodeovi vide
+        graphRef.current?.zoomToFit?.();
+
+        // ➡️ Dinamički zoom faktor ovisno o veličini grupe
+        const zoomFactor = groupNodes.length > 50 ? 1.2 : 1.5; // prilagodi prag i faktore po želji
+        graphRef.current?.zoom?.(zoomFactor);
       }
     }
   }, [selectedGroup, mappedNodes]);
+
 
   // ➡️ Izračunaj availableTypes direktno u render funkciji (KONAČNA VERZIJA)
   let types: string[] = [];
@@ -230,26 +275,56 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
 
   const allNodesHaveGroup = mappedNodes.every(n => typeof n.group === 'string');
   if (!allNodesHaveGroup) {
-    console.error('❌ Neki nodeovi nemaju group property!');
+    console.error('Neki nodeovi nemaju group property!');
   }
 
-  const nodeIds = new Set(mappedNodes.map(n => n.id));
 
+  
+  // ➡️ Dinamički layout distance i collide radius ovisno o veličini grupe
+  const groupNodeCount = selectedGroup
+    ? mappedNodes.filter(n => n.group === selectedGroup).length
+    : mappedNodes.length;
 
-  const validEdges = layoutedData.edges.filter(e => {
-    const srcId = typeof e.source === 'string' ? e.source : e.source?.id;
-    const tgtId = typeof e.target === 'string' ? e.target : e.target?.id;
-    const valid = nodeIds.has(srcId) && nodeIds.has(tgtId);
-    if (!valid) {
-      console.warn('⚠️ Removing invalid edge with missing node', e);
-    }
-    return valid;
-  });
+  const dynamicDistanceMin = selectedGroup
+    ? (groupNodeCount > 50
+        ? 100     // ➡️ Velike grupe
+        : groupNodeCount > 30
+          ? 200   // ➡️ Srednje grupe
+          : 200)  // ➡️ Male grupe
+    : 1000;       // ➡️ ALL prikaz
+
+  const dynamicCollideRadius = selectedGroup
+    ? (groupNodeCount > 50
+        ? 150     // ➡️ Velike grupe
+        : groupNodeCount > 20
+          ? 1   // ➡️ Srednje grupe
+          : 150)  // ➡️ Male grupe
+    : 1000;        // ➡️ ALL prikaz
+
+  const dynamicNodeStrength = selectedGroup
+    ? (groupNodeCount > 50
+        ? -1000    // ➡️ Velike grupe all
+        : groupNodeCount > 30
+          ? -150  // ➡️ Srednje grupe network.1
+          : -250) // ➡️ Male grupe network.2
+    : -800;      // ➡️ ALL prikaz
 
   // ➡️ Odredi hoće li se koristiti clusterAttribute
   const enableClustering = !selectedGroup || selectedGroup === '';
 
   const clusterAttribute = enableClustering ? 'group' : undefined;
+  const { edgeStyle } = getGraphConfig(viewMode);
+
+  const [showAllLabels, setShowAllLabels] = useState(false);
+
+  useEffect(() => {
+    setShowAllLabels(false);
+  }, []); // reset na mount
+
+  useEffect(() => {
+    setShowAllLabels(false);
+  }, [data]); // reset na promjenu podataka
+
 
   return (
     <div className={styles.container}>
@@ -316,69 +391,92 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
 
       <GraphCanvas
         key={`${viewMode}-${selectedGroup || 'all'}`}
-        ref={ref}
-        nodes={mappedNodes}
-        edges={validEdges.map((e) => ({
-          ...e,
-          source: typeof e.source === 'string' ? e.source : e.source.id,
-          target: typeof e.target === 'string' ? e.target : e.target.id
-        }))}
-        clusterAttribute={clusterAttribute}
-        draggable
-        layoutType="forceDirected2d"
-        layoutOverrides={{
-          distanceMin: 500, // default je često 1-20
-          nodeStrength: -500, // negativno odbija čvorove, default je -30 ili slično
-          collideRadius: 500, // veća vrijednost sprječava preklapanje
-        }}
-        edgeArrowPosition={(edge: EdgeType) =>
-          edge.type === 'software-internet' || edge.type === 'internet-software'
-            ? 'end'
-            : 'none'
-        }
-        edgeStyle={(edge: EdgeType) => getEdgeStyle(edge, layoutedData.nodes)}
-
-        
-        edgeLabel={(edge: EdgeType) => {
-          const resolvedEdge = layoutedData.edges.find(e => e.id === edge.id);
-          if (!isResolvedEdge(resolvedEdge)) return '';
-          return getEdgeLabel(resolvedEdge);
-        }}
-        nodeStyle={(node: NodeType) => {
-            return {
-              icon: {
-                url: node.icon || iconMap[node.type?.toLowerCase?.()] || '/icons/computer.png',
-                size: 48
-              },
-              label: {
-                color: '#5B88B2',
-                fontSize: 16,
-                visible: selectedNode?.id === node.id || hoveredNode?.id === node.id
-              },
-              borderRadius: 12,
-              padding: 6,
-              cursor: 'pointer'
-            };
-        }}
-        
+        ref={graphRef}
+        selections={selections}
+        actives={actives}
         onNodeClick={(node: NodeType) => {
-          setSelectedNode(node); // uvijek otvori node panel za ID i tip
+          handleSelectionNodeClick(node);
+          setSelectedNode(node);
+          setShowAllLabels(true); // ➡️ Prikaži sve labele na klik
 
           if (node.type === 'computer') {
-            setSelectedComputerId(node.id); // ako je computer otvori i editor panel
+            setSelectedComputerId(node.id); // otvori editor panel
           } else {
-            setSelectedComputerId(null); // ako nije, zatvori editor panel
+            setSelectedComputerId(null); // zatvori editor panel
           }
 
-          if (onNodeClick) onNodeClick(node);
+          if (externalOnNodeClick) externalOnNodeClick(node); // pozovi prop ako postoji
         }}
-        onCanvasClick={() => {
+        onCanvasClick={(event: MouseEvent) => {
+          handleSelectionCanvasClick(event); // 🔹 useSelection cleanup
+
           setSelectedNode(null);
           setSelectedComputerId(null);
         }}
-        onNodePointerEnter={(node: NodeType) => setHoveredNode(node)}
-        onNodePointerLeave={() => setHoveredNode(null)}
+        nodes={mappedNodes}
+        edges={validEdges.map((e) => {
+          const isActive = activeEdges?.includes(e.id);
+          const isHoveredEdge = hoveredNode && (
+            (typeof e.source === 'string' ? e.source : e.source.id) === hoveredNode.id ||
+            (typeof e.target === 'string' ? e.target : e.target.id) === hoveredNode.id
+          );
+          return {
+            ...e,
+            source: typeof e.source === 'string' ? e.source : e.source.id,
+            target: typeof e.target === 'string' ? e.target : e.target.id,
+            size: getEdgeSize(e, mappedNodes, viewMode),
+            label: getEdgeLabelDirect(e, mappedNodes, viewMode),
+            opacity: isActive || isHoveredEdge ? 1 : 0.2, // ➡️ fade out ostalih
+            strokeWidth: isActive || isHoveredEdge ? 2 : 1
+          };
+        })}
+        clusterAttribute={clusterAttribute}
+        draggable
+        labelType="nodes"
+        edgeLabelPosition="inline"        
+        layoutType="forceDirected2d"
+        layoutOverrides={{
+          distanceMin: dynamicDistanceMin,
+          collideRadius: dynamicCollideRadius,
+          nodeStrength: dynamicNodeStrength,
+          clusterStrength: 1,
+        }}
+        edgeArrowPosition={viewMode === 'credentials' ? 'mid' : 'end'}
+        getEdgeStyle={(edge: EdgeType) => {
+          const style = edgeStyle(edge, mappedNodes);
+          return {
+            strokeWidth: style.strokeWidth,
+            opacity: style.opacity,
+            arrowPosition: style.arrowPosition,
+          };
+        }}
+        nodeStyle={(node: NodeType) => ({
+          icon: {
+            url: node.icon || iconMap[node.type?.toLowerCase?.()] || '/icons/computer.png',
+            size: 48
+          },
+          label: {
+            text: node.label,
+            /* color: '#5B88B2',
+            fontSize: 16,
+            visible: showAllLabels, */
+            visible: hoveredNode?.id === node.id, // ➡️ vidljivo samo za hoverani čvor
+          },
+          borderRadius: 12,
+          padding: 6,
+          cursor: 'pointer'
+        })}
+        onNodePointerEnter={(node: NodeType) => {
+          setHoveredNode(node);
+          setShowAllLabels(true);
+        }}
+
+        onNodePointerLeave={() => {
+          setHoveredNode(null);
+          setShowAllLabels(false);
+        }}
       />
+
 
       {selectedComputerId && (
         <div className={styles.shiftPanel}>

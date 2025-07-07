@@ -178,7 +178,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
       nodeIndex[roleId] = {
         id: roleId,
         label: role,
-        fullName: role,
+        fullName: roleId,
         type: 'user',
         icon: '/icons/user.png',
         group: getGroupFromNode(roleId, 'user'),
@@ -318,7 +318,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
           nodeIndex[customerId] = {
             id: customerId,
             label: customerLabel,
-            fullName: customerLabel,
+            fullName: customerId,
             type: 'user-service',
             icon: '/icons/customer.png',
             group: networkGroup
@@ -335,7 +335,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
           nodeIndex[serviceId] = {
             id: serviceId,
             label: serviceName,
-            fullName: serviceName,
+            fullName: serviceId,
             type: 'service',
             icon: '/icons/service.png',
             group: networkGroup,
@@ -384,8 +384,17 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
 
   const nodesWithCoordinates = nodes.map(node => {
     const coords = node.group ? groupCoordinates.get(node.group) : undefined;
-    if (!coords) return node;
-    return { ...node, x: coords.x + (Math.random() * 200 - 100), y: coords.y + (Math.random() * 200 - 100) };
+    const updatedNode = coords
+      ? { ...node, x: coords.x + (Math.random() * 200 - 100), y: coords.y + (Math.random() * 200 - 100) }
+      : node;
+
+    // 🔹 Dodaj fallback za fullName unutar mapiranja
+    if (!updatedNode.fullName) {
+      updatedNode.fullName = updatedNode.id;
+    }
+
+    return updatedNode;
   });
+
   return { nodes: nodesWithCoordinates, edges };
-}
+  }
