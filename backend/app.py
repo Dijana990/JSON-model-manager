@@ -14,7 +14,8 @@ CORS(app)
 
 # Konfiguracija baze i JWT tajne
 app.config["SQLALCHEMY_DATABASE_URI"] = (
-    "postgresql://postgres:123456@localhost:5432/login_db"
+    # "postgresql://postgres:123456@localhost:5432/login_db"
+    "sqlite:///local.db"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET_KEY"] = "tajna"
@@ -69,7 +70,7 @@ def signup():
         db.session.commit()
 
         # All new users are automatically assigned the 'viewer' role
-        auth = UserRole(user_id=user.id, role="viewer")
+        auth = UserRole(user_id=user.id, role="admin")  # !!! treba promeniti u viewer
         db.session.add(auth)
         db.session.commit()
 
