@@ -1,5 +1,6 @@
 import type { GraphData, NodeType, EdgeType } from '../types';
 import { filterGraphCommon } from '../utils/common';
+import { getNodeId } from '../utils/common';
 
 export function filterLandscapeGraph(
   data: GraphData,
@@ -162,13 +163,16 @@ export function filterLandscapeGraph(
     const computers: { [compId: string]: { user: string | null; softwares: string[] } } = {};
     // Prvo pronađi user-computer veze
     data.edges.forEach(edge => {
+      const sourceId = getNodeId(edge.source);
+      const targetId = getNodeId(edge.target);
+
       if (edge.type === 'user-computer') {
-        if (!computers[edge.target]) computers[edge.target] = { user: null, softwares: [] };
-        computers[edge.target].user = edge.source;
-      }
+        if (!computers[targetId]) computers[targetId] = { user: null, softwares: [] };
+        computers[targetId].user = sourceId;
+          }
       if (edge.type === 'computer-software') {
-        if (!computers[edge.source]) computers[edge.source] = { user: null, softwares: [] };
-        computers[edge.source].softwares.push(edge.target);
+        if (!computers[sourceId]) computers[sourceId] = { user: null, softwares: [] };
+        computers[sourceId].softwares.push(targetId);
       }
     });
     // Za svaki computer koji ima usera, poveži usera sa svim softwareima na tom computeru

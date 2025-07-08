@@ -241,9 +241,12 @@ export function filterDataservicesGraph(
         }
     }
 
+    const getNodeId = (ref: string | NodeType): string =>
+    typeof ref === 'string' ? ref : ref.id;
+
     // ➔ Filtriraj edges nakon dodavanja virtualnih veza
     const filteredEdges = edges.filter(
-        e => filteredIds.has(e.source) && filteredIds.has(e.target)
+        e => filteredIds.has(getNodeId(e.source)) && filteredIds.has(getNodeId(e.target))
     );
 
     return { nodes: filteredNodes, edges: filteredEdges };

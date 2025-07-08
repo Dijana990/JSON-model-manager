@@ -15,7 +15,8 @@ import Graph from 'graphology';
 import forceAtlas2 from 'graphology-layout-forceatlas2';
 import type { GraphData, NodeType, EdgeType } from '../types';
 
-
+const getNodeId = (ref: string | NodeType): string =>
+  typeof ref === 'string' ? ref : ref.id;
 /**
  * Tip koji koristi eksplicitne reference na čvorove umjesto ID-eva u rubovima.
  * Koristi se za kompatibilnost s Reagraph komponentom.
@@ -62,8 +63,8 @@ export function resolveEdgeNodes(data: GraphData): GraphDataWithResolvedEdges {
 
   const resolvedEdges: ResolvedEdge[] = data.edges
     .map((edge) => {
-      const sourceNode = nodeMap.get(edge.source);
-      const targetNode = nodeMap.get(edge.target);
+      const sourceNode = nodeMap.get(getNodeId(edge.source));
+      const targetNode = nodeMap.get(getNodeId(edge.target));
       if (!sourceNode || !targetNode) return null;
 
       return {

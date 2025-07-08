@@ -29,29 +29,28 @@ export function filterCredentialsGraph(
 
     // ➔ RULES for showing credential node
     if (isAdmin && hasRoot) {
+      // Admin credential with root is a lock
       showCredential = true;
       nodeType = 'lock';
       nodeIcon = '/icons/lock.png';
-    } else if (isAdmin && !hasRoot) {
-      continue;
     } else if (!isAdmin && hasRoot) {
-      const hasEmployee0 = linkedEmployees.some((emp: any) =>
-        (Array.isArray(emp) && emp.includes(0)) || emp === 0
-      );
-      if (hasEmployee0) {
-        showCredential = true;
-        nodeType = 'lock';
-        nodeIcon = '/icons/lock.png';
-      }
-    } else if (isSvc && !hasRoot) {
+      // Non-admin credential with root is also lock
       showCredential = true;
-    } else if (!hasRoot && !isSvc) {
+      nodeType = 'lock';
+      nodeIcon = '/icons/lock.png';
+    } else if (!isAdmin && !hasRoot) {
+      // Non-admin credential without root is a key only if linked to employee index 0
       const hasEmployee0 = linkedEmployees.some((emp: any) =>
         (Array.isArray(emp) && emp.includes(0)) || emp === 0
       );
       if (hasEmployee0) {
         showCredential = true;
+        nodeType = 'key';
+        nodeIcon = '/icons/key.png';
       }
+    } else {
+      // Admin without root ➔ skip
+      continue;
     }
 
     if (!showCredential) continue;
@@ -86,23 +85,62 @@ export function filterCredentialsGraph(
     nodes.push(credNode);
     nodeIndex[credId] = credNode;
 
-    // 🔹 Add linked employees (users)
+  // 🔹 Ako je lock, dodaj edges admin user -> lock  
+  if (nodeType === 'lock') {
+    const adminUsers = Object.entries(inputJson.credentials || {})
+      .filter(([id, c]) => {
+        if (!id.startsWith('admin')) return false;
+        const cred = c as any;
+        const linked = cred.linked_employees || [];
+        return linked.some((emp: any) =>
+          Array.isArray(emp) ? emp.includes(0) : emp === 0
+        );
+      })
+      .map(([id, c]) => {
+        const cred = c as any;
+        const linked = cred.linked_employees || [];
+        const emp = linked.find((emp: any) =>
+          Array.isArray(emp) ? emp.includes(0) : emp === 0
+        );
+        return Array.isArray(emp) ? emp[0] : emp;
+      })
+      .filter(Boolean);
+
+    for (const adminId of adminUsers) {
+      // ➔ Dodaj admin user node ako ne postoji
+      if (!nodeIndex[adminId]) {
+        const adminNode: NodeType = {
+          id: adminId,
+          label: adminId,
+          fullName: adminId,
+          type: 'user',
+          icon: '/icons/user.png',
+          group: ''
+        };
+        nodes.push(adminNode);
+        nodeIndex[adminId] = adminNode;
+      }
+
+      // ➔ Dodaj edge admin -> lock ako ne postoji
+      if (!edgeExists(edges, adminId, credId)) {
+        edges.push({
+          id: `edge-${adminId}-${credId}`,
+          source: adminId,
+          target: credId,
+          type: 'user-lock'
+        });
+      }
+    }
+  }
+
+    
+    // 🔹 Add linked employees (users) with correct edge direction
     if (linkedEmployees.length > 0) {
       for (const emp of linkedEmployees) {
         const empId = Array.isArray(emp) ? emp[0] : emp;
         if (!empId) continue;
 
-        // ➡️ Pronađi računalo gdje je pohranjen credential
-        let userGroup = 'no-network';
-        if (storedAt.length > 0) {
-          const compId = storedAt[0];
-          const comp = inputJson.computers?.[compId];
-          const networkIds = comp?.network_idn || [];
-          if (networkIds.length > 0) {
-            userGroup = `network.internal.${networkIds.join('_')}`;
-          }
-        }
-
+        // ➔ Dodaj user node ako ne postoji
         if (!nodeIndex[empId]) {
           const empNode: NodeType = {
             id: empId,
@@ -115,13 +153,14 @@ export function filterCredentialsGraph(
           nodes.push(empNode);
           nodeIndex[empId] = empNode;
         }
-
-        if (!edgeExists(edges, credId, empId)) {
+        // ➔ Add edge user -> credential if key
+        if (nodeType === 'key' && !edgeExists(edges, credId, empId)) {
+          console.log('Adding user-key edge', credId, empId);
           edges.push({
             id: `edge-${credId}-${empId}`,
-            source: credId,
-            target: empId,
-            type: 'credential-user'
+            source: credId, // ➔ key
+            target: empId, // ➔ user
+            type: 'user-key'
           });
         }
       }
@@ -197,11 +236,18 @@ export function filterCredentialsGraph(
 
     // ➡️ Nakon filtriranja osnovnih nodeova, filtriraj po tipu (omogući kombinirani prikaz kao u landscape)
   if (selectedTypes && selectedTypes.size > 0) {
-    // Prikaži sve čvorove koji su u selectedTypes
+    // Prikaži sve čvorove koji su u selectedTypes **ILI su admin**
     const typeFilteredNodes = nodes.filter(n => selectedTypes.has(n.type));
     const nodeIds = new Set(typeFilteredNodes.map(n => n.id));
+
     // Prikaži sve rubove koji povezuju bilo koja dva prikazana čvora
-    const typeFilteredEdges = edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
+    // ili uključuju admin kao source ili target
+    const typeFilteredEdges = edges.filter(e => {
+      const srcId = typeof e.source === 'string' ? e.source : e.source.id;
+      const tgtId = typeof e.target === 'string' ? e.target : e.target.id;
+      return nodeIds.has(srcId) && nodeIds.has(tgtId);
+    });
+
     nodes.length = 0;
     edges.length = 0;
     nodes.push(...typeFilteredNodes);

@@ -96,17 +96,53 @@ export const useGraph = () => {
     });
   };
 
-  // Vraća trenutno stanje grafa i funkcije za manipulaciju
+  /**
+   * Briše čvor prema ID-u.
+   */
+  const removeNode = (nodeId: string) => {
+    pushToHistory();
+    setGraphData({
+      ...graphData,
+      nodes: graphData.nodes.filter((node) => node.id !== nodeId),
+      edges: graphData.edges.filter(
+        (edge) =>
+          (typeof edge.source === 'string' ? edge.source : edge.source.id) !== nodeId &&
+          (typeof edge.target === 'string' ? edge.target : edge.target.id) !== nodeId
+      ),
+    });
+  };
+
+  /**
+   * Briše rub (edge) prema ID-u.
+   */
+  const removeEdge = (edgeId: string) => {
+    pushToHistory();
+    setGraphData({
+      ...graphData,
+      edges: graphData.edges.filter((edge) => edge.id !== edgeId),
+    });
+  };
+
+  /**
+   * Resetira graf na prazno stanje.
+   */
+  const resetGraph = () => {
+    pushToHistory();
+    setGraphData({ nodes: [], edges: [] });
+  };
+
   return {
     graphData,
     addNode,
     addEdge,
     updateNode,
     updateEdge,
+    removeNode,
+    removeEdge,
+    resetGraph,
     undo,
     redo,
     canUndo: history.length > 0,
     canRedo: future.length > 0,
   };
 };
-

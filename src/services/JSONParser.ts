@@ -299,6 +299,9 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
           meta: {
             computer_idn: rawCompId,
             network_ids: sw.network_idn || [],
+            cpe: sw.cpe_idn || 'N/A',
+            version: sw.version || 'N/A',
+            person_index: sw.person_index ?? null,
             originalSoftware: sw
           }
         };

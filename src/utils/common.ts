@@ -4,6 +4,10 @@ function edgeExists(edges: EdgeType[], source: string, target: string) {
   return edges.some(e => e.source === source && e.target === target);
 }
 
+
+export const getNodeId = (ref: string | NodeType): string =>
+  typeof ref === 'string' ? ref : ref.id;
+
 // Dohvati sve grupe iz grafa (osim default/users)
 export function getAvailableGroups(data: GraphData): string[] {
   return Array.from(
@@ -33,16 +37,20 @@ export function getRelevantNodesByGroup(data: GraphData, group: string): NodeTyp
   while (added) {
     added = false;
     data.edges.forEach(edge => {
-      if (relatedNodeIds.has(edge.source) && !relatedNodeIds.has(edge.target)) {
-        relatedNodeIds.add(edge.target);
+      const sourceId = getNodeId(edge.source);
+      const targetId = getNodeId(edge.target);
+      
+      if (relatedNodeIds.has(sourceId) && !relatedNodeIds.has(targetId)) {
+        relatedNodeIds.add(targetId);
         added = true;
       }
-      if (relatedNodeIds.has(edge.target) && !relatedNodeIds.has(edge.source)) {
-        relatedNodeIds.add(edge.source);
+      if (relatedNodeIds.has(targetId) && !relatedNodeIds.has(sourceId)) {
+        relatedNodeIds.add(sourceId);
         added = true;
       }
     });
   }
+  
   return data.nodes.filter(n => relatedNodeIds.has(n.id));
 }
 
@@ -57,19 +65,23 @@ function addUserSoftwareEdges(
   // Pronađi sva računala i njihove povezane korisnike i softver iz originalnog grafa
   allEdges.forEach(edge => {
     if (edge.type === 'computer-user') {
-      const computerId = edge.source;
+      const computerId = typeof edge.source === 'string' ? edge.source : edge.source.id;
       const userId = edge.target;
       if (!computers[computerId]) {
         computers[computerId] = { users: [], software: [] };
       }
-      computers[computerId].users.push(userId);
+      computers[computerId].users.push(
+        typeof userId === 'string' ? userId : userId.id
+      );
     } else if (edge.type === 'computer-software') {
-      const computerId = edge.source;
+      const computerId = typeof edge.source === 'string' ? edge.source : edge.source.id;
       const softwareId = edge.target;
       if (!computers[computerId]) {
         computers[computerId] = { users: [], software: [] };
       }
-      computers[computerId].software.push(softwareId);
+      computers[computerId].software.push(
+        typeof softwareId === 'string' ? softwareId : softwareId.id
+      );
     }
   });
 
@@ -117,7 +129,7 @@ export function filterGraphCommon(
 
   const filteredIds = new Set(filteredNodes.map(n => n.id));
   const filteredEdges = data.edges.filter(
-    e => filteredIds.has(e.source) && filteredIds.has(e.target)
+    e => filteredIds.has(getNodeId(e.source)) && filteredIds.has(getNodeId(e.target))
   );
 
   let extraEdges: EdgeType[] = [];
@@ -149,11 +161,11 @@ export function filterGraphStrictByGroup(
   // 🔹 2. Pronađi sve čvorove koji imaju edge na groupNodes
   const connectedNodeIds = new Set<string>();
   data.edges.forEach(e => {
-    if (groupNodeIds.has(e.source)) {
-      connectedNodeIds.add(e.target);
+    if (groupNodeIds.has(getNodeId(e.source))) {
+      connectedNodeIds.add(getNodeId(e.target));
     }
-    if (groupNodeIds.has(e.target)) {
-      connectedNodeIds.add(e.source);
+    if (groupNodeIds.has(getNodeId(e.target))) {
+      connectedNodeIds.add(getNodeId(e.source));
     }
   });
 
@@ -170,7 +182,7 @@ export function filterGraphStrictByGroup(
 
   // 🔹 5. Zadrži samo edge-ove između čvorova u filtriranoj listi
   const filteredEdges = data.edges.filter(
-    e => filteredIds.has(e.source) && filteredIds.has(e.target)
+    e => filteredIds.has(getNodeId(e.source)) && filteredIds.has(getNodeId(e.target))
   );
 
   return { nodes: filteredNodes, edges: filteredEdges };
@@ -193,11 +205,14 @@ export function filterGraphStrictWithRelated(
   // Pronađi sve povezane nodeove (direktni neighbors)
   const relatedNodeIds = new Set(groupNodeIds);
   data.edges.forEach(edge => {
-    if (groupNodeIds.has(edge.source)) {
-      relatedNodeIds.add(edge.target);
+    const srcId = getNodeId(edge.source);
+    const tgtId = getNodeId(edge.target);
+
+    if (groupNodeIds.has(srcId)) {
+      relatedNodeIds.add(tgtId);
     }
-    if (groupNodeIds.has(edge.target)) {
-      relatedNodeIds.add(edge.source);
+    if (groupNodeIds.has(tgtId)) {
+      relatedNodeIds.add(srcId);
     }
   });
 
@@ -210,7 +225,7 @@ export function filterGraphStrictWithRelated(
 
   const filteredIds = new Set(filteredNodes.map(n => n.id));
   const filteredEdges = data.edges.filter(
-    e => filteredIds.has(e.source) && filteredIds.has(e.target)
+    e => filteredIds.has(getNodeId(e.source)) && filteredIds.has(getNodeId(e.target))
   );
 
   return { nodes: filteredNodes, edges: filteredEdges };
@@ -247,12 +262,15 @@ export function filterGraphCredentialsCustom(
   const softwareIdsInGroup = groupNodes.filter(n => n.type === 'software').map(n => n.id);
 
   for (const edge of data.edges) {
-    if (edge.type === 'credential-software' && softwareIdsInGroup.includes(edge.target)) {
-      const lockKeyNode = data.nodes.find(n => n.id === edge.source && ['lock', 'key'].includes(n.type));
+    const srcId = getNodeId(edge.source);
+    const tgtId = getNodeId(edge.target);
+
+    if (edge.type === 'credential-software' && softwareIdsInGroup.includes(tgtId)) {
+      const lockKeyNode = data.nodes.find(n => n.id === srcId && ['lock', 'key'].includes(n.type));
       if (lockKeyNode && !filteredNodes.includes(lockKeyNode)) {
         filteredNodes.push(lockKeyNode);
       }
-      if (!edgeExists(filteredEdges, edge.source, edge.target)) {
+      if (!edgeExists(filteredEdges, srcId, tgtId)) {
         filteredEdges.push(edge);
       }
     }
@@ -262,12 +280,15 @@ export function filterGraphCredentialsCustom(
   const lockKeyIds = new Set(filteredNodes.filter(n => ['lock', 'key'].includes(n.type)).map(n => n.id));
 
   for (const edge of data.edges) {
-    if (edge.type === 'credential-user' && lockKeyIds.has(edge.source)) {
-      const userNode = data.nodes.find(n => n.id === edge.target && n.type === 'user');
+    const srcId = getNodeId(edge.source);
+    const tgtId = getNodeId(edge.target);
+
+    if (edge.type === 'credential-user' && lockKeyIds.has(srcId)) {
+      const userNode = data.nodes.find(n => n.id === tgtId && n.type === 'user');
       if (userNode && !filteredNodes.includes(userNode)) {
         filteredNodes.push(userNode);
       }
-      if (!edgeExists(filteredEdges, edge.source, edge.target)) {
+      if (!edgeExists(filteredEdges, srcId, tgtId)) {
         filteredEdges.push(edge);
       }
     }
@@ -275,9 +296,13 @@ export function filterGraphCredentialsCustom(
 
   // ➡️ Dodaj sve edgeove između filtriranih nodeova
   const filteredIds = new Set(filteredNodes.map(n => n.id));
+
   for (const edge of data.edges) {
-    if (filteredIds.has(edge.source) && filteredIds.has(edge.target)) {
-      if (!edgeExists(filteredEdges, edge.source, edge.target)) {
+    const srcId = getNodeId(edge.source);
+    const tgtId = getNodeId(edge.target);
+
+    if (filteredIds.has(srcId) && filteredIds.has(tgtId)) {
+      if (!edgeExists(filteredEdges, srcId, tgtId)) {
         filteredEdges.push(edge);
       }
     }
@@ -288,3 +313,5 @@ export function filterGraphCredentialsCustom(
 
   return { nodes: filteredNodes, edges: uniqueEdges };
 }
+
+

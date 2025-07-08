@@ -40,8 +40,8 @@ export type NodeType = {
 
 export type EdgeType = {
   id: string;
-  source: string;
-  target: string;
+  source: string | NodeType;
+  target: string | NodeType;
   label?: string;
   type?:
   | 'computer-software'
