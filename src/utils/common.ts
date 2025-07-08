@@ -315,3 +315,26 @@ export function filterGraphCredentialsCustom(
 }
 
 
+export function getConnectedNodes(
+  edges: EdgeType[],
+  mappedNodes: NodeType[],
+  options: { selectedNodeId: string; direction: 'incoming' | 'outgoing'; edgeType?: string; nodeTypeFilter?: string[] }
+): NodeType[] {
+  const { selectedNodeId, direction, edgeType, nodeTypeFilter } = options;
+
+  const filteredEdges = edges.filter(e => {
+    const matchDirection = direction === 'incoming' ? e.target === selectedNodeId : e.source === selectedNodeId;
+    const matchType = edgeType ? e.type === edgeType : true;
+    return matchDirection && matchType;
+  });
+
+  const connectedNodes = filteredEdges.map(e => {
+    const nodeId = direction === 'incoming' ? e.source : e.target;
+    return mappedNodes.find(n => n.id === nodeId);
+  }).filter(Boolean) as NodeType[];
+
+  if (nodeTypeFilter && nodeTypeFilter.length > 0) {
+    return connectedNodes.filter(n => nodeTypeFilter.includes(n.type));
+  }
+  return connectedNodes;
+}

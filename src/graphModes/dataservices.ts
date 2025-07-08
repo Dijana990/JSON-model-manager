@@ -208,7 +208,7 @@ export function filterDataservicesGraph(
     const filteredIds = new Set(filteredNodes.map(n => n.id));
 
     // ➔ Add virtual user-software edges if no dataservice type is selected
-    if (!selectedTypes.has('dataservice')) {
+    if (selectedTypes.has('user') && selectedTypes.has('software')) {
         const dataserviceSoftwareIds = new Set<string>();
         for (const [dsId, ds] of Object.entries(inputJson.data || {}) as [string, any][]) {
         const linkedSoftware = ds.linked_software || [];

@@ -1,5 +1,6 @@
 import type { NodeType, EdgeType, GraphData } from '../types';
 import { getBinaryLabel } from '../services/JSONParser';
+import { extractUserIdFromSwId } from '../utils/graphHelpers';
 
 const INTERNET_NODE_ID = 'Internet';
 
@@ -144,7 +145,8 @@ export function filterFirewallsGraph(
         group: (comp?.network_idn?.length > 0)
             ? `network.internal.${comp.network_idn.join('_')}`
             : 'no-network',
-        meta: { computer_idn: fromCompId, originalSoftware: sw || null }
+        meta: { computer_idn: fromCompId, user_id: extractUserIdFromSwId(fromSwId), originalSoftware: sw || null }
+          
         });
         // ➡️ Add computer → software edge
         addEdge({

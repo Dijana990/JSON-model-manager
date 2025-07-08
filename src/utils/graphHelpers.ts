@@ -127,9 +127,6 @@ export function cleanDuplicateLabel(label: string | undefined): string {
   return label;
 }
 
-
-
-
 /**
  * Dohvati verziju softvera iz NodeType.
  */
@@ -144,3 +141,22 @@ export const getSoftwareVersion = (softwareNode: NodeType): string => {
 
   return 'N/A';
 };
+
+export function shortenDataserviceLabel(label: string): string {
+  if (!label) return '';
+  if (label.includes(':')) {
+    const parts = label.split(':');
+    const last = parts.pop();
+    const first = parts.join(':');
+    return `${first}:${last}`;
+  }
+  if (label.includes('#')) {
+    return label.split('#')[0];
+  }
+  return label;
+}
+
+export function extractUserIdFromSwId(swId: string): string | null {
+  if (swId.startsWith('None')) return null;
+  return swId.split('>')[0] || null;
+}

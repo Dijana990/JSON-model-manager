@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { NodeType, EdgeType } from '../types';
 import { parseCpe, getSoftwareUser, getSoftwareComputer, getServiceProvider, parseSoftwareIdFromUserServiceId } from '../utils/graphHelpers';
 import { cleanDuplicateLabel } from '../utils/graphHelpers';
+import { getConnectedNodes } from '../utils/common';
 import styles from './GraphCanvas.module.scss';
 
 interface NodeInfoPanelProps {
@@ -142,149 +143,168 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
             <div>
               <h4>🔐 Credentials Info</h4>
 
-              {/* KEY */}
               {selectedNode.type === 'key' && (
                 <>
-                  <p>🔑 This key is assigned to users:</p>
+                  <p>🔑 Assigned to users:</p>
                   <ul>
-                    {validEdges
-                      .filter(e => e.source === selectedNode.id && e.type === 'user-key')
-                      .map(e => {
-                        const node = mappedNodes.find(n => n.id === e.target && n.type === 'user');
-                        if (!node) return null; // ➔ zaštita ako user node ne postoji
-                        const displayLabel = node.label && node.label.trim().length > 0
-                          ? node.label
-                          : '👤 User';
-                        return (
-                          <li key={e.id} className={styles.listItemWithTooltip}>
-                              {cleanDuplicateLabel(node?.label || node?.id)}
-                              <span className={styles.tooltip}>
-                                {node?.fullName || node?.id}
-                              </span>
-                          </li>
-                        );
-                      })}
+                    {getConnectedNodes(validEdges, mappedNodes, {
+                      selectedNodeId: selectedNode.id,
+                      direction: 'outgoing',
+                      edgeType: 'user-key',
+                      nodeTypeFilter: ['user']
+                    }).map(node => (
+                      <li key={node.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p>💻 Stored on computer:</p>
+                  <ul>
+                    {getConnectedNodes(validEdges, mappedNodes, {
+                      selectedNodeId: selectedNode.id,
+                      direction: 'outgoing',
+                      edgeType: 'credential-computer',
+                      nodeTypeFilter: ['computer']
+                    }).map(node => (
+                      <li key={node.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p>💾 Linked Software:</p>
+                  <ul>
+                    {getConnectedNodes(validEdges, mappedNodes, {
+                      selectedNodeId: selectedNode.id,
+                      direction: 'outgoing',
+                      edgeType: 'credential-software',
+                      nodeTypeFilter: ['software']
+                    }).map(node => (
+                      <li key={node.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ))}
                   </ul>
                 </>
               )}
 
-              {/* LOCK */}
               {selectedNode.type === 'lock' && (
                 <>
                   <p>🔒 Accessible by admin users:</p>
                   <ul>
-                    {validEdges
-                      .filter(e => e.target === selectedNode.id && e.type === 'user-lock')
-                      .map(e => {
-                        const node = mappedNodes.find(n => n.id === e.source);
-                        const displayLabel = node?.label && node.label.trim().length > 0
-                          ? node.label
-                          : 'Admin';
-                        return (
-                          <li key={e.id} className={styles.listItemWithTooltip}>
-                            {cleanDuplicateLabel(displayLabel)}
-                            <span className={styles.tooltip}>{node?.fullName || node?.id}</span>
-                          </li>
-                        );
-                      })}
+                    {getConnectedNodes(validEdges, mappedNodes, {
+                      selectedNodeId: selectedNode.id,
+                      direction: 'incoming',
+                      edgeType: 'user-lock',
+                      nodeTypeFilter: ['user']
+                    }).map(node => (
+                      <li key={node.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p>💻 Stored on computer:</p>
+                  <ul>
+                    {getConnectedNodes(validEdges, mappedNodes, {
+                      selectedNodeId: selectedNode.id,
+                      direction: 'outgoing',
+                      edgeType: 'credential-computer',
+                      nodeTypeFilter: ['computer']
+                    }).map(node => (
+                      <li key={node.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p>💾 Linked Software:</p>
+                  <ul>
+                    {getConnectedNodes(validEdges, mappedNodes, {
+                      selectedNodeId: selectedNode.id,
+                      direction: 'outgoing',
+                      edgeType: 'credential-software',
+                      nodeTypeFilter: ['software']
+                    }).map(node => (
+                      <li key={node.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ))}
                   </ul>
                 </>
               )}
 
-              {/* USER */}
               {selectedNode.type === 'user' && (
                 <>
-                  <p>🔑 Keys assigned to this user:</p>
+                  <p>🔑 Keys accessible:</p>
                   <ul>
-                    {validEdges
-                      .filter(e => e.target === selectedNode.id && e.type === 'user-key')
-                      .map(e => {
-                        const node = mappedNodes.find(n => n.id === e.target);
-                        return (
-                          <li key={e.id} className={styles.listItemWithTooltip}>
-                            {node?.label || (typeof e.target === 'string' ? e.target : e.target.id)}
-                            <span className={styles.tooltip}>
-                              {node?.fullName || node?.id}
-                            </span>
-                          </li>
-                        );
-                      })}
+                    {getConnectedNodes(validEdges, mappedNodes, {
+                      selectedNodeId: selectedNode.id,
+                      direction: 'incoming',
+                      edgeType: 'user-key',
+                      nodeTypeFilter: ['key']
+                    }).map(node => (
+                      <li key={node.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ))}
                   </ul>
 
                   <p>🔒 Locks accessible:</p>
                   <ul>
-                    {(() => {
-                      const isAdmin = selectedNode.id.startsWith('admin');
-                      return (isAdmin
-                        ? validEdges.filter(e => e.source === selectedNode.id && e.type === 'user-lock')
-                        : validEdges.filter(e => e.source === selectedNode.id && e.type === 'user-key')
-                      )
-                        .map(e => {
-                          const node = mappedNodes.find(n => n.id === e.target);
-                          if (!node) return null;
-                          if (!isAdmin && node.type !== 'lock') return null; // ➔ samo lock čvorove za obične korisnike
-                          return (
-                            <li key={e.id} className={styles.listItemWithTooltip}>
-                              {node.label || node.id}
-                              <span className={styles.tooltip}>{node.fullName || node.id}</span>
-                            </li>
-                          );
-                        });
-                    })()}
+                    {getConnectedNodes(validEdges, mappedNodes, {
+                      selectedNodeId: selectedNode.id,
+                      direction: 'outgoing',
+                      edgeType: 'user-lock',
+                      nodeTypeFilter: ['lock']
+                    }).map(node => (
+                      <li key={node.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ))}
                   </ul>
                 </>
               )}
 
-              {/* COMPUTER */}
-              {selectedNode.type === 'computer' && (
-                <>
-                  <p>💻 Credentials stored here:</p>
-                  <ul>
-                    {validEdges
-                      .filter(e => e.target === selectedNode.id && ['key', 'lock'].includes(mappedNodes.find(n => n.id === e.source)?.type || ''))
-                      .map(e => {
-                        const node = mappedNodes.find(n => n.id === e.source);
-                        const displayLabel = node?.label?.trim()
-                          ? node.label
-                          : node?.type === 'key'
-                            ? '🔑 Key'
-                            : node?.type === 'lock'
-                              ? '🔒 Lock'
-                              : (typeof e.source === 'string' ? e.source : e.source.id);
-                        return (
-                          <li key={e.id} className={styles.listItemWithTooltip}>
-                            {displayLabel}
-                            <span className={styles.tooltip}>{node?.fullName || (typeof e.source === 'string' ? e.source : e.source.id)}</span>
-                          </li>
-                        );
-                      })}
-                  </ul>
-                </>
-              )}
-
-              {/* SOFTWARE */}
               {selectedNode.type === 'software' && (
                 <>
-                  <p>💾 Associated keys or locks:</p>
+                  <p>🔑 Keys linked:</p>
                   <ul>
-                    {validEdges
-                      .filter(e => e.target === selectedNode.id && ['key', 'lock'].includes(mappedNodes.find(n => n.id === e.source)?.type || ''))
-                      .map(e => {
-                        const node = mappedNodes.find(n => n.id === e.source);
-                        const displayLabel = node?.label?.trim()
-                          ? node.label
-                          : node?.type === 'key'
-                            ? '🔑 Key'
-                            : node?.type === 'lock'
-                              ? '🔒 Lock'
-                              : (typeof e.source === 'string' ? e.source : e.source.id);
-                        return (
-                          <li key={e.id} className={styles.listItemWithTooltip}>
-                            {displayLabel}
-                            <span className={styles.tooltip}>{node?.fullName || (typeof e.source === 'string' ? e.source : e.source.id)}</span>
-                          </li>
-                        );
-                      })}
+                    {getConnectedNodes(validEdges, mappedNodes, {
+                      selectedNodeId: selectedNode.id,
+                      direction: 'incoming',
+                      edgeType: 'credential-software',
+                      nodeTypeFilter: ['key']
+                    }).map(node => (
+                      <li key={node.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p>🔒 Locks linked:</p>
+                  <ul>
+                    {getConnectedNodes(validEdges, mappedNodes, {
+                      selectedNodeId: selectedNode.id,
+                      direction: 'incoming',
+                      edgeType: 'credential-software',
+                      nodeTypeFilter: ['lock']
+                    }).map(node => (
+                      <li key={node.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ))}
                   </ul>
                 </>
               )}
@@ -297,35 +317,167 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
 
       {viewMode === 'dataservices' && (
         <>
-          {['computer', 'user', 'software', 'dataservice'].includes(selectedNode.type) && (
-            <div>
-              <h4>Dataservice Info</h4>
-              {selectedNode.meta?.data_definition_idn && (
-                <p><strong>Data Definition:</strong> {selectedNode.meta.data_definition_idn}</p>
-              )}
-              {selectedNode.meta?.principal_software && (
-                <p><strong>Principal Software:</strong> {selectedNode.meta.principal_software}</p>
-              )}
-            </div>
+          {selectedNode.type === 'dataservice' && (
+            <>
+              <h4>📊 Dataservice Info</h4>
+              <p><strong>Protection Level:</strong> {selectedNode.meta?.originalDataservice?.protection_level || 'N/A'}</p>
+
+              <p><strong>Linked Software:</strong></p>
+              <ul>
+                {validEdges
+                  .filter(e => e.source === selectedNode.id && e.type === 'dataservice-software')
+                  .map(e => {
+                    const node = mappedNodes.find(n => n.id === e.target);
+                    if (!node) return null;
+                    return (
+                      <li key={e.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    );
+                  })}
+              </ul>
+
+              <p><strong>Principal Software:</strong> {selectedNode.meta?.originalDataservice?.principal_software || 'N/A'}</p>
+
+              <p><strong>Users:</strong></p>
+              <ul>
+                {(selectedNode.meta?.originalDataservice?.person_groups || []).map((userId: string) => (
+                  <li key={userId}>{userId}</li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {selectedNode.type === 'user' && (
+            <>
+              <h4>👤 User Info</h4>
+              <p><strong>Dataservices Accessible:</strong></p>
+              <ul>
+                {validEdges
+                  .filter(e => e.source === selectedNode.id && e.type === 'user-dataservice')
+                  .map(e => {
+                    const node = mappedNodes.find(n => n.id === e.target);
+                    if (!node) return null;
+                    return (
+                      <li key={e.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    );
+                  })}
+              </ul>
+            </>
+          )}
+
+          {selectedNode.type === 'software' && (
+            <>
+              <h4>💾 Software Info</h4>
+              <p><strong>Installed on computer:</strong> {selectedNode.meta?.computerId || 'Unknown'}</p>
+              <p><strong>Network:</strong> {selectedNode.group || 'Unknown'}</p>
+              <p><strong>User:</strong> {selectedNode.meta?.originalSoftware?.person_group_id || 'N/A'}</p>
+
+              <p><strong>Dataservices:</strong></p>
+              <ul>
+                {validEdges
+                  .filter(e => e.target === selectedNode.id && e.type === 'dataservice-software')
+                  .map(e => {
+                    const node = mappedNodes.find(n => n.id === e.source);
+                    if (!node) return null;
+                    return (
+                      <li key={e.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    );
+                  })}
+              </ul>
+            </>
           )}
         </>
       )}
 
+
       {viewMode === 'firewalls' && (
         <>
-          {['computer', 'software', 'internet'].includes(selectedNode.type) && (
-            <div>
-              <h4>Firewall Rules</h4>
-              {selectedNode.meta?.firewall_rules?.length ? (
-                <ul>
-                  {selectedNode.meta.firewall_rules.map((rule: any) => (
-                    <li key={rule.id}>{rule.allow ? 'ALLOW' : 'DENY'} from {rule.from} to {rule.to}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No firewall rules</p>
-              )}
-            </div>
+          {selectedNode.type === 'internet' && (
+            <>
+              <h4>🌐 Internet Info</h4>
+              <p><strong>ID:</strong> {selectedNode.id}</p>
+              <p><strong>TYPE:</strong> Internet</p>
+
+              <p><strong>Outbound Connections:</strong></p>
+              <ul>
+                {validEdges
+                  .filter(e => e.source === selectedNode.id && e.type === 'internet')
+                  .map(e => {
+                    const node = mappedNodes.find(n => n.id === e.target);
+                    return node ? (
+                      <li key={e.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ) : null;
+                  })}
+              </ul>
+
+              <p><strong>Inbound Connections:</strong></p>
+              <ul>
+                {validEdges
+                  .filter(e => e.target === selectedNode.id && e.type === 'internet')
+                  .map(e => {
+                    const node = mappedNodes.find(n => n.id === e.source);
+                    return node ? (
+                      <li key={e.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ) : null;
+                  })}
+              </ul>
+            </>
+          )}
+
+          {selectedNode.type === 'software' && (
+            <>
+              <h4>💾 Software Info</h4>
+              <p><strong>Type:</strong> Software</p>
+              <p><strong>Computer:</strong> {selectedNode.meta?.computer_idn || 'Unknown'}</p>
+              <p><strong>Firewall Rules - Outbound:</strong></p>
+              <ul>
+                {validEdges
+                  .filter(e => e.source === selectedNode.id && e.type === 'software-software')
+                  .map(e => {
+                    const node = mappedNodes.find(n => n.id === e.target);
+                    return node ? (
+                      <li key={e.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ) : null;
+                  })}
+              </ul>
+
+              <p><strong>Firewall Rules - Inbound:</strong></p>
+              <ul>
+                {validEdges
+                  .filter(e => e.target === selectedNode.id && e.type === 'software-software')
+                  .map(e => {
+                    const node = mappedNodes.find(n => n.id === e.source);
+                    return node ? (
+                      <li key={e.id} className={styles.listItemWithTooltip}>
+                        {node.label || node.id}
+                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                      </li>
+                    ) : null;
+                  })}
+              </ul>
+
+              <p><strong>Internet connection:</strong> {validEdges.some(e =>
+                (e.source === selectedNode.id || e.target === selectedNode.id) &&
+                e.type === 'internet'
+              ) ? 'Yes' : 'No'}</p>
+            </>
           )}
         </>
       )}
