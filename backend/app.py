@@ -98,7 +98,7 @@ def login():
             if not user_role:
                 return jsonify(error="User role not found"), 403
 
-            # ✅ Token uključuje id i rolu (u "sub" polju)
+            # Token uključuje id i rolu (u "sub" polju)
             access_token = create_access_token(
                 identity={"id": user.id, "role": user_role.role}
             )
@@ -112,8 +112,6 @@ def login():
 
 
 # ------------------ RUTA: ME ------------------
-
-
 @app.route("/me", methods=["GET"])
 @jwt_required()
 def me():

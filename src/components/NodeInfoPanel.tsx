@@ -22,19 +22,12 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
   const handleMouseEnter = () => setIsIdVisible(true);
   const handleMouseLeave = () => setIsIdVisible(false);
 
-
-
-  
   return (
     <div className={styles.nodePanel}>
       <h3>{selectedNode.label}</h3>
       <p>
         <strong>ID:</strong>{' '}
-        <span
-          className={isIdVisible ? `${styles.nodeId} ${styles.nodeIdVisible}` : styles.nodeId}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
+        <span className={styles.nodeId}>
           {selectedNode.fullName || selectedNode.id}
         </span>
       </p>
