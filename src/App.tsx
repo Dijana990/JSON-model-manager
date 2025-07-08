@@ -9,6 +9,7 @@ import styles from './components/loginform.module.scss'
 import NET from "vanta/dist/vanta.net.min";
 import * as THREE from 'three'
 
+
 function App() {
   const location = useLocation()
   const vantaRef = useRef<HTMLDivElement>(null)
@@ -30,7 +31,7 @@ function App() {
           points: 15.0,
           maxDistance: 25.0,
           spacing: 20.0,
-          vertexColors: false
+          vertexColors: true
         })
       )
     }

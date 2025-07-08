@@ -8,6 +8,22 @@
  */
 import type { GraphData, NodeType, EdgeType, Computer, Software } from '../types';
 
+
+// ✅ Nova pomoćna funkcija za grupiranje nodova po tipu i id-u
+export function getGroupFromNode(id: string, type: string): string {
+  if (!type) return 'default';
+  if (type === 'computer') {
+    if (id === 'None:0:0') return 'server-00';
+    if (id.startsWith('None:')) return 'servers';
+    return 'users';
+  }
+  if (type === 'user') return 'users';
+  if (type === 'software') return 'software';
+  if (type === 'service') return 'services';
+  if (type === 'user-service') return 'user-services';
+  return 'default';
+}
+
 export function getCustomerLabel(binaryLabel: string): string {
   switch (binaryLabel) {
     case "Office": return "Office";
@@ -118,15 +134,6 @@ export function formatServerId(rawCompId: string): string {
   return rawCompId.replace(/:/g, '.');
 }
 
-function getGroupFromNode(id: string, type: string): string {
-  if (type === 'computer') {
-    if (id === 'None:0:0') return 'server-00';
-    if (id.startsWith('None:')) return 'servers';
-    return 'users';
-  }
-  if (type === 'user') return 'users';
-  return 'default';
-}
 
 export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystems = false): GraphData {
   if (!json?.computers || typeof json.computers !== 'object') {
@@ -171,7 +178,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
       nodeIndex[roleId] = {
         id: roleId,
         label: role,
-        fullName: role,
+        fullName: roleId,
         type: 'user',
         icon: '/icons/user.png',
         group: getGroupFromNode(roleId, 'user'),
@@ -232,24 +239,25 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
 
     if (hasPerson && personId) {
       const userNodeId = `user-${personId}`;
+      // 🔹 Uvijek stvaraj vezu između računala i korisničkog čvora (role)
       if (nodeIndex[userNodeId]) {
-        edges.push({ id: `edge-${compId}-${userNodeId}`, source: compId, target: userNodeId, type: 'computer-user' });
+        nodeIndex[userNodeId].group = networkGroup;
+        edges.push({ id: `edge-${userNodeId}-${compId}`, source: userNodeId, target: compId, type: 'user-computer' });
       } else {
-        if (!nodeIndex[personId]) {
-          nodeIndex[personId] = {
-            id: personId,
-            label: personId,
-            fullName: personId,
-            type: 'person',
-            icon: '/icons/user.png',
-            group: getGroupFromNode(personId, 'person'),
-            meta: {
-              originalUser: inputJson.people?.[personId] || null
-            }
-          };
-          nodes.push(nodeIndex[personId]);
-        }
-        edges.push({ id: `edge-${compId}-${personId}`, source: compId, target: personId, type: 'computer-person' });
+        // Fallback ako rola nije definirana u employee_groups - kreiraj user node
+        nodeIndex[userNodeId] = {
+          id: userNodeId,
+          label: personId,
+          fullName: `User role: ${personId}`,
+          type: 'user',
+          icon: '/icons/user.png',
+          group: networkGroup,
+          meta: {
+            originalUser: personId
+          }
+        };
+        nodes.push(nodeIndex[userNodeId]);
+        edges.push({ id: `edge-${userNodeId}-${compId}`, source: userNodeId, target: compId, type: 'user-computer' });
       }
     }
 
@@ -285,12 +293,15 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
           fullName: binaryFullName,
           type: 'software',
           icon: '/icons/binary.png',
-          group: getGroupFromNode(swId, 'software'),
+          group: networkGroup,
           provides_services: sw.provides_services || [],
           provides_network_services: sw.provides_network_services || [],
           meta: {
             computer_idn: rawCompId,
             network_ids: sw.network_idn || [],
+            cpe: sw.cpe_idn || 'N/A',
+            version: sw.version || 'N/A',
+            person_index: sw.person_index ?? null,
             originalSoftware: sw
           }
         };
@@ -310,10 +321,10 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
           nodeIndex[customerId] = {
             id: customerId,
             label: customerLabel,
-            fullName: customerLabel,
+            fullName: customerId,
             type: 'user-service',
             icon: '/icons/customer.png',
-            group: getGroupFromNode(customerId, 'user-service')
+            group: networkGroup
           };
           nodes.push(nodeIndex[customerId]);
         }
@@ -327,10 +338,10 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
           nodeIndex[serviceId] = {
             id: serviceId,
             label: serviceName,
-            fullName: serviceName,
+            fullName: serviceId,
             type: 'service',
             icon: '/icons/service.png',
-            group: getGroupFromNode(serviceId, 'service'),
+            group: networkGroup,
             meta: {
               originalService: inputJson.services?.[serviceId] || null
             }
@@ -351,7 +362,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
             fullName: `${serviceName}-${compId}`,
             type: 'service',
             icon: '/icons/service.png',
-            group: getGroupFromNode(serviceId, 'service')
+            group: networkGroup
           };
           nodes.push(nodeIndex[serviceId]);
         }
@@ -376,9 +387,17 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
 
   const nodesWithCoordinates = nodes.map(node => {
     const coords = node.group ? groupCoordinates.get(node.group) : undefined;
-    if (!coords) return node;
-    return { ...node, x: coords.x + (Math.random() * 200 - 100), y: coords.y + (Math.random() * 200 - 100) };
+    const updatedNode = coords
+      ? { ...node, x: coords.x + (Math.random() * 200 - 100), y: coords.y + (Math.random() * 200 - 100) }
+      : node;
+
+    // 🔹 Dodaj fallback za fullName unutar mapiranja
+    if (!updatedNode.fullName) {
+      updatedNode.fullName = updatedNode.id;
+    }
+
+    return updatedNode;
   });
 
   return { nodes: nodesWithCoordinates, edges };
-}
+  }

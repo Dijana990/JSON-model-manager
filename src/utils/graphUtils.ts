@@ -15,7 +15,8 @@ import Graph from 'graphology';
 import forceAtlas2 from 'graphology-layout-forceatlas2';
 import type { GraphData, NodeType, EdgeType } from '../types';
 
-
+const getNodeId = (ref: string | NodeType): string =>
+  typeof ref === 'string' ? ref : ref.id;
 /**
  * Tip koji koristi eksplicitne reference na čvorove umjesto ID-eva u rubovima.
  * Koristi se za kompatibilnost s Reagraph komponentom.
@@ -53,46 +54,6 @@ export function simplifyGraph(data: GraphDataWithResolvedEdges): GraphData {
  * - Povezuje rubove s referencama na stvarne čvorove (umjesto ID-eva).
  * - Ovo je potrebno za kompatibilnost sa Reagraph prikazom.
  */
-export function applyForceAtlasLayout(data: GraphData): { nodes: NodeType[]; edges: EdgeWithNodes[] } {
-  const graph = new Graph();
-  // Dodaj čvorove i rubove u graf
-  data.nodes.forEach((node) => graph.addNode(node.id, { ...node }));
-  data.edges.forEach((edge) => graph.addEdge(edge.source, edge.target));
-  // Izvrši layout algoritam
-  forceAtlas2.assign(graph, {
-    iterations: 100,
-    settings: {
-      gravity: 1,
-      scalingRatio: 10,
-      slowDown: 1
-    }
-  });
-  // Postavi nove koordinate čvorovima
-  const nodesWithPosition: NodeType[] = data.nodes.map((node) => {
-    const { x, y } = graph.getNodeAttributes(node.id);
-    return { ...node, x, y, z: 0 };
-  });
-  // Zamijeni ID-eve u rubovima referencama na objekte čvorova
-  const nodeMap = new Map(data.nodes.map((n) => [n.id, n]));
-  const edgesWithObjects: EdgeWithNodes[] = data.edges
-    .map((edge) => {
-      const sourceNode = nodeMap.get(edge.source);
-      const targetNode = nodeMap.get(edge.target);
-      if (!sourceNode || !targetNode) return null;
-      return {
-        ...edge,
-        source: sourceNode,
-        target: targetNode
-      };
-    })
-    .filter(Boolean) as EdgeWithNodes[];
-
-  return {
-    nodes: nodesWithPosition,
-    edges: edgesWithObjects
-  };
-}
-
 /**
  * Vraća graf u kojem svaki rub koristi stvarne objekte čvorova
  * umjesto string ID-eva. Ovo je važno za Reagraph koji očekuje takav format.
@@ -102,8 +63,8 @@ export function resolveEdgeNodes(data: GraphData): GraphDataWithResolvedEdges {
 
   const resolvedEdges: ResolvedEdge[] = data.edges
     .map((edge) => {
-      const sourceNode = nodeMap.get(edge.source);
-      const targetNode = nodeMap.get(edge.target);
+      const sourceNode = nodeMap.get(getNodeId(edge.source));
+      const targetNode = nodeMap.get(getNodeId(edge.target));
       if (!sourceNode || !targetNode) return null;
 
       return {
@@ -154,16 +115,6 @@ export function shiftConnectedNodes(graphData: GraphData, nodeId: string, shiftX
  * Na temelju naziva grupe vraća zadanu boju.
  * Koristi se za stilizaciju čvorova u prikazu.
  */
-export function getGroupColor(group: string | undefined): string {
-  const colorMap: Record<string, string> = {
-    'server-00': '#B3E5FC',
-    'servers': '#C8E6C9',
-    'users': '#FFF9C4',
-    'default': '#E0E0E0'
-  };
-  return group && colorMap[group] ? colorMap[group] : colorMap['default'];
-}
-
 /**
  * Mapiranje tipova čvorova u odgovarajuće ikone.
  * Ključno za vizualni prikaz u Reagraph komponenti (ikone pored čvorova).

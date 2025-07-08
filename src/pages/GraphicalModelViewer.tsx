@@ -30,12 +30,14 @@ import { filterCredentialsGraph } from '../graphModes/credentials';
 import type { GraphData, FileItem } from "../types";
 
 function mergeRawJsons(raws: any[]): any {
+  if (!raws || raws.length === 0) return null;
+
   const merged = { computers: {}, credentials: {}, data: {}, ...raws[0] };
   for (const raw of raws) {
     if (raw.computers) Object.assign(merged.computers, raw.computers);
     if (raw.credentials) Object.assign(merged.credentials, raw.credentials);
+    if (raw.firewall_rules) merged.firewall_rules = raw.firewall_rules; // ➡️ dodano direktno
     if (raw.data) Object.assign(merged.data, raw.data);
-    // Dodaj ostala polja po potrebi
   }
   return merged;
 }
@@ -130,6 +132,11 @@ export default function GraphicalModelViewer() {
           // Merge grafa i merge raw JSON-ova (za firewalls input)
           const mergedGraph = mergeGraphs(results.map(r => r.graph));
           const mergedRaw = mergeRawJsons(results.map(r => r.raw)); // koristi prvi raw za firewalls, ili mergeaj po potrebi
+
+          if (!mergedRaw) {
+            return;
+          }
+
           setMergedRaw(mergedRaw);
           setGraphs({
             landscape: mergedGraph,

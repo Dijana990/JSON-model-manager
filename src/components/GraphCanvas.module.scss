@@ -61,6 +61,25 @@
   font-size: 14px;
 }
 
+/* NODE PANEL */
+.nodeId {
+  display: inline-block;
+  max-width: 200px; /* prilagodi po potrebi (npr. 150px) */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.nodeId:hover,
+.nodeIdVisible {
+  overflow: visible;
+  white-space: normal;
+  word-break: break-all;
+  max-width: none; /* ukloni ograničenje širine */
+  background-color: #f0f0f0; /* opcionalno, za bolji kontrast */
+  padding: 4px; /* opcionalno, za bolji izgled */
+}
+
 /* X GUMB ZA ZATVARANJE */
 .closeButton {
   position: absolute;
@@ -182,4 +201,21 @@
   font-size: 13px;
   z-index: 100;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* NODEINFO PANEL */
+.listItemWithTooltip {
+  display: inline-block;
+  max-width: 140px; /* ili koliko treba */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+.listItemWithTooltip:hover {
+  white-space: normal;
+  word-break: break-all;
+  max-width: none;
+  background-color: #f0f0f0; /* opcionalno za bolji kontrast */
+  padding: 4px; /* opcionalno */
 }

@@ -1,5 +1,6 @@
 import type { GraphData, NodeType, EdgeType } from '../types';
 import { filterGraphCommon } from '../utils/common';
+import { getNodeId } from '../utils/common';
 
 export function filterLandscapeGraph(
   data: GraphData,
@@ -148,6 +149,53 @@ export function filterLandscapeGraph(
           }
         }
       }
+    });
+  }
+
+  // Dodaj user ↔ software virtualne veze SAMO ako su na istom computeru i computer ima usera
+  // ➡️ Ali NEMOJ dodavati ako je selektiran i computer jer tada postoje stvarne veze
+  if (
+    selectedTypes.has('software') &&
+    selectedTypes.has('user') &&
+    !selectedTypes.has('computer')
+  ) {
+    // Pronađi sve computere koji imaju usera
+    const computers: { [compId: string]: { user: string | null; softwares: string[] } } = {};
+    // Prvo pronađi user-computer veze
+    data.edges.forEach(edge => {
+      const sourceId = getNodeId(edge.source);
+      const targetId = getNodeId(edge.target);
+
+      if (edge.type === 'user-computer') {
+        if (!computers[targetId]) computers[targetId] = { user: null, softwares: [] };
+        computers[targetId].user = sourceId;
+          }
+      if (edge.type === 'computer-software') {
+        if (!computers[sourceId]) computers[sourceId] = { user: null, softwares: [] };
+        computers[sourceId].softwares.push(targetId);
+      }
+    });
+    // Za svaki computer koji ima usera, poveži usera sa svim softwareima na tom computeru
+    Object.entries(computers).forEach(([compId, { user, softwares }]) => {
+      if (!user) return;
+      softwares.forEach(softId => {
+        // Provjeri da oba čvora postoje u filtriranim nodes
+        if (!nodes.find(n => n.id === user && n.type === 'user')) return;
+        if (!nodes.find(n => n.id === softId && n.type === 'software')) return;
+        const id = `virtual-${user}-${softId}`;
+        const alreadyExists = data.edges.some(
+          (e) => e.source === user && e.target === softId
+        );
+        if (!alreadyExists && !addedEdgeIds.has(id)) {
+          extraEdges.push({
+            id,
+            source: user,
+            target: softId,
+            type: 'user-software-virtual',
+          });
+          addedEdgeIds.add(id);
+        }
+      });
     });
   }
 

@@ -36,9 +36,9 @@ const EdgeEditor: React.FC<EdgeEditorProps> = ({ edge, onChange }) => {
       <label>ID</label>
       <input type="text" name="id" value={edge.id} disabled />
       <label>Source</label>
-      <input type="text" name="source" value={edge.source} onChange={handleInputChange} />
+      <input type="text" name="source" value={typeof edge.source === 'string' ? edge.source : edge.source.id} onChange={handleInputChange} />
       <label>Destionation</label>
-      <input type="text" name="target" value={edge.target} onChange={handleInputChange} />
+      <input type="text" name="target" value={typeof edge.target === 'string' ? edge.target : edge.target.id} onChange={handleInputChange} />
       <label>Type (optional)</label>
       <input type="text" name="type" value={edge.type || ''} onChange={handleInputChange} />
     </div>

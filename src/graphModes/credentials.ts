@@ -1,5 +1,5 @@
 import type { NodeType, EdgeType } from '../types';
-import { filterGraphStrictWithRelated } from '../utils/common';
+import { filterGraphCredentialsCustom } from '../utils/common';
 import { getBinaryLabel, formatServerId } from '../services/JSONParser';
 
 function edgeExists(edges: EdgeType[], source: string, target: string) {
@@ -14,7 +14,6 @@ export function filterCredentialsGraph(
   const nodes: NodeType[] = [];
   const edges: EdgeType[] = [];
   const nodeIndex: Record<string, NodeType> = {};
-
   for (const [credId, cred] of Object.entries(inputJson.credentials || {}) as [string, any][]) {
     const hasRoot = cred.has_root || false;
     const linkedEmployees = cred.linked_employees || [];
@@ -30,66 +29,118 @@ export function filterCredentialsGraph(
 
     // ➔ RULES for showing credential node
     if (isAdmin && hasRoot) {
+      // Admin credential with root is a lock
       showCredential = true;
       nodeType = 'lock';
       nodeIcon = '/icons/lock.png';
-    } else if (isAdmin && !hasRoot) {
-      continue;
     } else if (!isAdmin && hasRoot) {
-      const hasEmployee0 = linkedEmployees.some((emp: any) =>
-        (Array.isArray(emp) && emp.includes(0)) || emp === 0
-      );
-      if (hasEmployee0) {
-        showCredential = true;
-        nodeType = 'lock';
-        nodeIcon = '/icons/lock.png';
-      }
-    } else if (isSvc && !hasRoot) {
+      // Non-admin credential with root is also lock
       showCredential = true;
-    } else if (!hasRoot && !isSvc) {
+      nodeType = 'lock';
+      nodeIcon = '/icons/lock.png';
+    } else if (!isAdmin && !hasRoot) {
+      // Non-admin credential without root is a key only if linked to employee index 0
       const hasEmployee0 = linkedEmployees.some((emp: any) =>
         (Array.isArray(emp) && emp.includes(0)) || emp === 0
       );
       if (hasEmployee0) {
         showCredential = true;
+        nodeType = 'key';
+        nodeIcon = '/icons/key.png';
       }
+    } else {
+      // Admin without root ➔ skip
+      continue;
     }
 
     if (!showCredential) continue;
-
     // ✅ ➔ Odredi group za credential node na temelju network_idn storedAt computera
-    let credGroup = 'credentials';
+    let credGroup = 'no-network';
     if (storedAt.length > 0) {
       const compId = storedAt[0];
       const comp = inputJson.computers?.[compId];
       const networkIds = comp?.network_idn || [];
-
       if (networkIds.length > 0) {
         credGroup = `network.internal.${networkIds.join('_')}`;
-      } else {
-        credGroup = 'no-network';
       }
     }
 
-    // ➔ Add credential node s grupom
+    // ➔ Izračunaj shortCredLabel prije korištenja
+    const shortCredLabel = credId.split('@')[0].split(':').pop()?.split('#')[0] || credId;
+
+    // ➔ Add credential node s grupom + meta.credentialGroup
     const credNode: NodeType = {
       id: credId,
-      label: '',
+      label: (nodeType === 'key' || nodeType === 'lock') ? '' : shortCredLabel,
       fullName: credId,
       type: nodeType,
       icon: nodeIcon,
       group: credGroup,
-      meta: { originalCredential: cred }
+      meta: {
+        originalCredential: cred,
+        credentialGroup: 'credentials' // oznaka za stilizaciju ili filtere
+      }
     };
+
     nodes.push(credNode);
     nodeIndex[credId] = credNode;
 
-    // 🔹 Add linked employees (users)
+  // 🔹 Ako je lock, dodaj edges admin user -> lock  
+  if (nodeType === 'lock') {
+    const adminUsers = Object.entries(inputJson.credentials || {})
+      .filter(([id, c]) => {
+        if (!id.startsWith('admin')) return false;
+        const cred = c as any;
+        const linked = cred.linked_employees || [];
+        return linked.some((emp: any) =>
+          Array.isArray(emp) ? emp.includes(0) : emp === 0
+        );
+      })
+      .map(([id, c]) => {
+        const cred = c as any;
+        const linked = cred.linked_employees || [];
+        const emp = linked.find((emp: any) =>
+          Array.isArray(emp) ? emp.includes(0) : emp === 0
+        );
+        return Array.isArray(emp) ? emp[0] : emp;
+      })
+      .filter(Boolean);
+
+    for (const adminId of adminUsers) {
+      // ➔ Dodaj admin user node ako ne postoji
+      if (!nodeIndex[adminId]) {
+        const adminNode: NodeType = {
+          id: adminId,
+          label: adminId,
+          fullName: adminId,
+          type: 'user',
+          icon: '/icons/user.png',
+          group: ''
+        };
+        nodes.push(adminNode);
+        nodeIndex[adminId] = adminNode;
+      }
+
+      // ➔ Dodaj edge admin -> lock ako ne postoji
+      if (!edgeExists(edges, adminId, credId)) {
+        edges.push({
+          id: `edge-${adminId}-${credId}`,
+          source: adminId,
+          target: credId,
+          type: 'user-lock'
+        });
+      }
+    }
+  }
+
+    
+    // 🔹 Add linked employees (users) with correct edge direction
     if (linkedEmployees.length > 0) {
       for (const emp of linkedEmployees) {
         const empId = Array.isArray(emp) ? emp[0] : emp;
         if (!empId) continue;
 
+        // ➔ Dodaj user node ako ne postoji
         if (!nodeIndex[empId]) {
           const empNode: NodeType = {
             id: empId,
@@ -97,18 +148,19 @@ export function filterCredentialsGraph(
             fullName: empId,
             type: 'user',
             icon: '/icons/user.png',
-            group: 'users'
+            group: ''
           };
           nodes.push(empNode);
           nodeIndex[empId] = empNode;
         }
-
-        if (!edgeExists(edges, credId, empId)) {
+        // ➔ Add edge user -> credential if key
+        if (nodeType === 'key' && !edgeExists(edges, credId, empId)) {
+          console.log('Adding user-key edge', credId, empId);
           edges.push({
             id: `edge-${credId}-${empId}`,
-            source: credId,
-            target: empId,
-            type: 'credential-user'
+            source: credId, // ➔ key
+            target: empId, // ➔ user
+            type: 'user-key'
           });
         }
       }
@@ -123,7 +175,7 @@ export function filterCredentialsGraph(
       if (!nodeIndex[compId]) {
         const compNode: NodeType = {
           id: compId,
-          label: compId,
+          label: formatServerId(compId),
           fullName: compId,
           type: 'computer',
           icon: '/icons/computer.png',
@@ -182,8 +234,79 @@ export function filterCredentialsGraph(
     }
   }
 
-  // 🔹 Filter final output
-  const filtered = filterGraphStrictWithRelated({ nodes, edges }, selectedGroup, selectedTypes);
+    // ➡️ Nakon filtriranja osnovnih nodeova, filtriraj po tipu (omogući kombinirani prikaz kao u landscape)
+  if (selectedTypes && selectedTypes.size > 0) {
+    // Prikaži sve čvorove koji su u selectedTypes **ILI su admin**
+    const typeFilteredNodes = nodes.filter(n => selectedTypes.has(n.type));
+    const nodeIds = new Set(typeFilteredNodes.map(n => n.id));
 
+    // Prikaži sve rubove koji povezuju bilo koja dva prikazana čvora
+    // ili uključuju admin kao source ili target
+    const typeFilteredEdges = edges.filter(e => {
+      const srcId = typeof e.source === 'string' ? e.source : e.source.id;
+      const tgtId = typeof e.target === 'string' ? e.target : e.target.id;
+      return nodeIds.has(srcId) && nodeIds.has(tgtId);
+    });
+
+    nodes.length = 0;
+    edges.length = 0;
+    nodes.push(...typeFilteredNodes);
+    edges.push(...typeFilteredEdges);
+  }
+
+  if (!nodes.some(n => n.type === 'key' || n.type === 'lock')) {
+    // 🔹 Add virtual user-software edges based on installed_software.person_group_id
+    for (const comp of Object.values(inputJson.computers || {}) as any[]) {
+      const installedSoftware = comp.installed_software || {};
+
+      for (const [swId, sw] of Object.entries(installedSoftware) as [string, any][]) {
+        const personGroupId = sw.person_group_id;
+        if (!personGroupId) continue;
+        if (Number(sw.person_index) !== 0) continue;
+
+        // ➔ Pronađi userNode u nodes prema person_group_id (možda treba prefiks ako ih generiraš kao user-${personGroupId})
+        const userNode = nodes.find(n =>
+          n.type === 'user' &&
+          (n.id === personGroupId || n.id === `user-${personGroupId}`)
+        );
+
+        // ➔ Pronađi softwareNode po fullName (u credential view sw.id može biti compId_label, pa koristi includes)
+        const swNode = nodes.find(n =>
+          n.type === 'software' &&
+          (n.fullName === swId || n.id.includes(swId))
+        );
+
+        if (userNode && swNode && !edgeExists(edges, userNode.id, swNode.id)) {
+          edges.push({
+            id: `edge-${userNode.id}-${swNode.id}`,
+            source: userNode.id,
+            target: swNode.id,
+            type: 'user-software-virtual'
+          });
+        }
+      }
+    }
+
+    // 🔹 Add virtual computer-software edges
+    for (const node of nodes) {
+      if (node.type !== 'software') continue;
+
+      const swNode = node;
+      const compIdPart = swNode.id.split('_')[0];
+      const compNode = nodeIndex[compIdPart];
+
+      if (compNode && compNode.type === 'computer' && !edgeExists(edges, compNode.id, swNode.id)) {
+        edges.push({
+          id: `edge-${compNode.id}-${swNode.id}`,
+          source: compNode.id,
+          target: swNode.id,
+          type: 'computer-software-virtual'
+        });
+      }
+    }
+  }
+    
+  // 🔹 Filter final output
+  const filtered = filterGraphCredentialsCustom({ nodes, edges }, selectedGroup);
   return filtered;
 }
