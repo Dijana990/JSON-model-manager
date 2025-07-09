@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
-import type { NodeType } from '../types';
-import { mapComputerDataWithLinkedSoftware } from '../services/JSONParser';
-import { useSession } from '../context/SessionContext';
 import styles from './ComputerEditorPanel.module.scss';
+
+// Define basic types for this component
+interface NodeType {
+    id: string;
+    label: string;
+    meta?: {
+        network_ids?: number[];
+        originalComputer?: {
+            data?: string[];
+            used_hardware_quota?: number;
+            installed_software?: Record<string, any>;
+            stored_credentials?: any[];
+        };
+    };
+}
 
 type Props = {
     computers: NodeType[];
@@ -20,25 +32,11 @@ const ComputerDrawerPanel: React.FC<Props> = ({
     onSave,
     onCancel
 }) => {
-    const { outputJson } = useSession();
-    console.log("🗂️ Full outputJson in ComputerDrawerPanel: CDP", outputJson);
-
-    console.log("🛠️ Calling mapComputerDataWithLinkedSoftware with data:", selectedComputer?.meta?.originalComputer?.data);
-    console.log("🛠️ outputJson.data keys:", outputJson?.data ? Object.keys(outputJson.data) : "NO DATA");
-    const detailedData = selectedComputer
-        ? mapComputerDataWithLinkedSoftware(
-            selectedComputer.meta?.originalComputer?.data || [],
-            outputJson
-        )
-        : [];
-        console.log("💡 detailedData", detailedData);
     const [activeTab, setActiveTab] = useState('general');
     const [drawerWidth, setDrawerWidth] = useState(400);
     const [collapsed, setCollapsed] = useState(false);
 
-
-    
-    // Dohvati sve network segmente iz outputJson
+    // Dohvati sve network segmente
     const availableNetworks = Array.from(
         new Set(
             computers.flatMap(comp => comp.meta?.network_ids || [])
@@ -70,12 +68,13 @@ const ComputerDrawerPanel: React.FC<Props> = ({
     };
 
     const startResizing = (e: React.MouseEvent) => {
+        e.preventDefault();
         const startX = e.clientX;
         const startWidth = drawerWidth;
 
         const handleMouseMove = (moveEvent: MouseEvent) => {
             const newWidth = startWidth - (moveEvent.clientX - startX);
-            setDrawerWidth(Math.max(250, newWidth));
+            setDrawerWidth(Math.max(250, Math.min(800, newWidth)));
         };
 
         const handleMouseUp = () => {
@@ -90,23 +89,35 @@ const ComputerDrawerPanel: React.FC<Props> = ({
     if (!selectedComputer) return null;
 
     return (
-        <div className={styles.panel} style={{ width: collapsed ? '20px' : `${drawerWidth}px` }}
+        <div
+            className={`${styles.panel} ${collapsed ? styles.collapsed : ''}`}
+            style={{ width: collapsed ? '20px' : `${drawerWidth}px` }}
+        >
+            {/* Resize handle for dragging */}
+            {!collapsed && (
+                <div 
+                    className={styles.resizeHandle}
+                    onMouseDown={startResizing}
+                />
+            )}
+            
+            <div
+                className={`${styles.headerButtons} ${collapsed ? styles.collapsedButtons : ''}`}
             >
-            <div className={styles.resizeHandle} onMouseDown={startResizing}></div>
-
-            <div className={styles.headerButtons}>
-                <button onClick={toggleCollapse}>
-                    {collapsed ? '➡️' : '⬅️'}
+                <button onClick={toggleCollapse} className={styles.backButton}>
+                    {collapsed ? '⬅️' : '➡️'}
                 </button>
 
-                <button onClick={() => onCancel()} className={styles.closeButton}>❌ Close</button>
+                <button onClick={onCancel} className={styles.closeButton}>
+                    ❌
+                </button>
             </div>
 
             {!collapsed && (
                 <>
-                    <div className={styles.computersListContainer}>
-                        <h3>COMPUTERS LIST</h3>
-                        <table className={styles.table}>
+                    <h4 className={styles.sectionTitle}>COMPUTERS LIST</h4>
+                    <div className={styles.computersListTableWrapper}>
+                        <table className={styles.computersListTable}>
                             <thead>
                                 <tr>
                                     <th>Label</th>
@@ -132,158 +143,244 @@ const ComputerDrawerPanel: React.FC<Props> = ({
                         </table>
                     </div>
 
-                        {/* Tabs */}
-                        <div className={styles.tabs}>
-                            <button onClick={() => setActiveTab('general')}>General</button>
-                            <button onClick={() => setActiveTab('data')}>Data</button>
-                            <button onClick={() => setActiveTab('software')}>Software</button>
-                            <button onClick={() => setActiveTab('credentials')}>Credentials</button>
-                            <button onClick={() => setActiveTab('firewalls')}>Firewalls</button>
-                        </div>
+                    {/* Tabs */}
+                    <div className={styles.tabs}>
+                        <button onClick={() => setActiveTab('general')}>General</button>
+                        <button onClick={() => setActiveTab('data')}>Data</button>
+                        <button onClick={() => setActiveTab('software')}>Software</button>
+                        <button onClick={() => setActiveTab('credentials')}>Credentials</button>
+                        <button onClick={() => setActiveTab('firewalls')}>Firewalls</button>
+                    </div>
 
-                        {/* Tab Content */}
-                        <div className={styles.tabContentContainer}>
-                            <div className={styles.tabContentScrollable}>
-                                {activeTab === 'general' && (
-                                    <div>
-                                        <h4>General Info</h4>
-                                        <p>ID: {selectedComputer.id}</p>
-                                        <p>Label: {selectedComputer.label}</p>
-
-                                        <label>Network:</label>
-                                        <select
-                                            value={selectedNetwork}
-                                            onChange={(e) => setSelectedNetwork(e.target.value)}
-                                        >
-                                            <option value="">Select network</option>
-                                            {availableNetworks.map(net => (
-                                                <option key={net.id} value={net.id}>{net.label}</option>
-                                            ))}
-                                        </select>
-
-                                        <p>Used HW: {selectedComputer.meta?.originalComputer?.used_hardware_quota || '-'}</p>
-
-                                        <h5>Data Summary</h5>
-                                        <p>{(selectedComputer.meta?.originalComputer?.data || []).join(', ')}</p>
+                    {/* Tab Content */}
+                    <div className={styles.tabContentContainer}>
+                        <div className={styles.tabContentScrollable}>
+                            {activeTab === 'general' && (
+                                <div>
+                                    <h4 className={styles.sectionTitle}>General Info</h4>
+                                    <div className={styles.generalInfoTableWrapper}>
+                                        <table className={styles.generalInfoTable}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Property</th>
+                                                    <th>Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td><strong>ID</strong></td>
+                                                    <td>{selectedComputer.id}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Label</strong></td>
+                                                    <td>{selectedComputer.label}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Used HW</strong></td>
+                                                    <td>{selectedComputer.meta?.originalComputer?.used_hardware_quota || '-'}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Software Count</strong></td>
+                                                    <td>{Object.keys(selectedComputer.meta?.originalComputer?.installed_software || {}).length}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Data Count</strong></td>
+                                                    <td>{(selectedComputer.meta?.originalComputer?.data || []).length}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                )}
 
-                                {activeTab === 'data' && (
-                                    <table className={styles.table}>
-                                        <thead>
-                                            <tr>
-                                                <th>IDN</th>
-                                                <th>Type</th>
-                                                <th>Protection</th>
-                                                <th>Person groups</th>
-                                                <th>Linked SW</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(selectedComputer.meta?.originalComputer?.data || []).map((d: string, idx: number) => (
-                                                <tr key={idx}>
-                                                    <td>{d}</td>
-                                                    <td>{/* getDataType(d) */}</td>
+                                    <h4 className={styles.sectionTitle}>Network</h4>
+                                    <div className={styles.networkTableWrapper}>
+                                        <table className={styles.networkTable}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Current Network</th>
+                                                    <th>Available Networks</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>{selectedComputer.meta?.network_ids?.join(', ') || 'None'}</td>
                                                     <td>
-                                                        <select>
-                                                            {[1, 2, 3, 4, 5].map(level => (
-                                                                <option key={level} value={level}>{level}</option>
+                                                        <select
+                                                            value={selectedNetwork}
+                                                            onChange={(e) => setSelectedNetwork(e.target.value)}
+                                                        >
+                                                            <option value="">Select network</option>
+                                                            {availableNetworks.map(net => (
+                                                                <option key={net.id} value={net.id}>{net.label}</option>
                                                             ))}
                                                         </select>
                                                     </td>
-                                                    <td>
-                                                        <select multiple>
-                                                            {/** getAvailablePersonGroups().map(g => (
-                                    <option key={g} value={g}>{g}</option>
-                                )) */}
-                                                        </select>
-                                                    </td>
-                                                    <td>
-                                                        <select multiple>
-                                                            {/** getAvailableSoftware(selectedComputer).map(sw => (
-                                    <option key={sw.id} value={sw.id}>{sw.label}</option>
-                                )) */}
-                                                        </select>
-                                                    </td>
-                                                    <td><button>Edit</button><button>Delete</button></td>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-
-                                {activeTab === 'software' && (
-                                    <table className={styles.table}>
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Name</th>
-                                                <th>Version/Patch</th>
-                                                <th>Provides services</th>
-                                                <th>Compatible data types</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {Object.entries(selectedComputer.meta?.originalComputer?.installed_software || {}).map(([id, sw]: [string, any], idx) => (
-                                                <tr key={idx}>
-                                                    <td>{id}</td>
-                                                    <td>{sw.name}</td>
-                                                    <td>{sw.version} / {sw.patch_level}</td>
-                                                    <td>
-                                                        <select multiple>
-                                                            {(sw.provides_services || []).map((s: string) => (
-                                                                <option key={s} value={s}>{s}</option>
-                                                            ))}
-                                                        </select>
-                                                    </td>
-                                                    <td>{(sw.compatible_data_types || []).join(', ')}</td>
-                                                    <td><button>Edit</button><button>Delete</button></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-
-                                {activeTab === 'credentials' && (
-                                    <table className={styles.table}>
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Has root</th>
-                                                <th>Linked software</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(selectedComputer.meta?.originalComputer?.stored_credentials || []).map((cred: any, idx: number) => (
-                                                <tr key={idx}>
-                                                    <td>{cred.idn}</td>
-                                                    <td>
-                                                        <input type="checkbox" checked={cred.has_root} />
-                                                    </td>
-                                                    <td>
-                                                        <select multiple>
-                                                            {(cred.linked_software || []).map((sw: string) => (
-                                                                <option key={sw} value={sw}>{sw}</option>
-                                                            ))}
-                                                        </select>
-                                                    </td>
-                                                    <td><button>Edit</button><button>Delete</button></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-
-                                {activeTab === 'firewalls' && (
-                                    <div>
-                                        <p>TODO: Firewall rules table here</p>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                )}
-                            </div>
+
+                                    <h4 className={styles.sectionTitle}>Data Summary</h4>
+                                    <div className={styles.dataSummaryTableWrapper}>
+                                        <table className={styles.dataSummaryTable}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Data ID</th>
+                                                    <th>Type</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(selectedComputer.meta?.originalComputer?.data || []).map((dataItem: string, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td>{dataItem}</td>
+                                                        <td>Data</td>
+                                                        <td>Active</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'data' && (
+                                <div>
+                                    <h4 className={styles.sectionTitle}>Data</h4>
+                                    <div className={styles.dataTableWrapper}>
+                                        <table className={styles.dataTable}>
+                                            <thead>
+                                                <tr>
+                                                    <th>IDN</th>
+                                                    <th>Type</th>
+                                                    <th>Protection</th>
+                                                    <th>Person groups</th>
+                                                    <th>Linked SW</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(selectedComputer.meta?.originalComputer?.data || []).map((d: string, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td>{d}</td>
+                                                        <td>Data</td>
+                                                        <td>
+                                                            <select>
+                                                                {[1, 2, 3, 4, 5].map(level => (
+                                                                    <option key={level} value={level}>{level}</option>
+                                                                ))}
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <select multiple>
+                                                                <option value="group1">Group 1</option>
+                                                                <option value="group2">Group 2</option>
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <select multiple>
+                                                                <option value="sw1">Software 1</option>
+                                                                <option value="sw2">Software 2</option>
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <button>Edit</button>
+                                                            <button>Delete</button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'software' && (
+                                <div>
+                                    <h4 className={styles.sectionTitle}>Software</h4>
+                                    <div className={styles.softwareTableWrapper}>
+                                        <table className={styles.softwareTable}>
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Name</th>
+                                                    <th>Version/Patch</th>
+                                                    <th>Provides services</th>
+                                                    <th>Compatible data types</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {Object.entries(selectedComputer.meta?.originalComputer?.installed_software || {}).map(([id, sw]: [string, any], idx) => (
+                                                    <tr key={idx}>
+                                                        <td>{id}</td>
+                                                        <td>{sw.name}</td>
+                                                        <td>{sw.version} / {sw.patch_level}</td>
+                                                        <td>
+                                                            <select multiple>
+                                                                {(sw.provides_services || []).map((s: string) => (
+                                                                    <option key={s} value={s}>{s}</option>
+                                                                ))}
+                                                            </select>
+                                                        </td>
+                                                        <td>{(sw.compatible_data_types || []).join(', ')}</td>
+                                                        <td>
+                                                            <button>Edit</button>
+                                                            <button>Delete</button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'credentials' && (
+                                <div>
+                                    <h4 className={styles.sectionTitle}>Credentials</h4>
+                                    <div className={styles.credentialsTableWrapper}>
+                                        <table className={styles.credentialsTable}>
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Has root</th>
+                                                    <th>Linked software</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(selectedComputer.meta?.originalComputer?.stored_credentials || []).map((cred: any, idx: number) => (
+                                                    <tr key={idx}>
+                                                        <td>{cred.idn}</td>
+                                                        <td>
+                                                            <input type="checkbox" checked={cred.has_root} readOnly />
+                                                        </td>
+                                                        <td>
+                                                            <select multiple>
+                                                                {(cred.linked_software || []).map((sw: string) => (
+                                                                    <option key={sw} value={sw}>{sw}</option>
+                                                                ))}
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <button>Edit</button>
+                                                            <button>Delete</button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+
+                            {activeTab === 'firewalls' && (
+                                <div>
+                                    <p>TODO: Firewall rules table here</p>
+                                </div>
+                            )}
                         </div>
+                    </div>
                     <div className={styles.actions}>
                         <button onClick={() => onSave(selectedComputer)}>SAVE</button>
                         <button onClick={onCancel}>CANCEL</button>
