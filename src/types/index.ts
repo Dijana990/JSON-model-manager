@@ -91,3 +91,15 @@ export interface Computer {
   network_idn: number[];
   // ➕ dodaj po potrebi druge property-je
 }
+
+export type DetailedData = {
+  idn: string;
+  data_type: string;
+  protection_level: number;
+  person_groups: string[]; // ili any[] ako nisu uvijek stringovi
+  linked_software: {
+    computerId: string;
+    softwareId: string;
+    name: string;
+  }[];
+};

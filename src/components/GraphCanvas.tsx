@@ -28,9 +28,10 @@ import type { GraphData, NodeType, EdgeType } from '../types';
 import { getEdgeSize, getGraphConfig } from '../utils/edgeStyleUtils';
 import type { GraphDataWithResolvedEdges, ResolvedEdge } from '../utils/graphUtils';
 import { getEdgeLabelDirect } from '../utils/edgeStyleUtils';
-import ComputerEditorPanel from './ComputerEditorPanel';
+import { useSession } from '../context/SessionContext';
 import { prepareGraph } from '../utils/prepareGraph';
 import NodeInfoPanel from './NodeInfoPanel';
+import ComputerDrawerPanel from './ComputerDrawerPanel';
 import HoverPanel from './HoverPanel';
 import { useGraphFilters } from '../hooks/useGraphFilters';
 import { useZoomToGroup } from '../hooks/useZoomToGroup';
@@ -69,6 +70,9 @@ const GraphCanvasComponent: React.FC<GraphCanvasComponentProps> = ({
 }) => {
  
   const graphRef = useRef<any>(null);
+
+  const { outputJson } = useSession();
+  console.log("🗂️ Full outputJson in GraphCanvasComponent:", outputJson);
 
   const preparedData = useMemo(() => prepareGraph(data), [data]);
   
@@ -356,7 +360,7 @@ const [layoutedData, setLayoutedData] = useState<GraphDataWithResolvedEdges>(pre
       />
 
       {/* COMPUTER EDITOR PANEL + SHIFT PANEL */}
-      {selectedComputerId && selectedNode?.type === 'computer' && (
+{/*       {selectedComputerId && selectedNode?.type === 'computer' && (
         <>
           <ComputerEditorPanel
             node={selectedNode}
@@ -391,7 +395,7 @@ const [layoutedData, setLayoutedData] = useState<GraphDataWithResolvedEdges>(pre
             }}
           />
         </>
-      )}
+      )} */}
 
       {/* NODE INFO PANEL */}
       {selectedNode && selectedNode.type !== 'computer' && (
@@ -401,6 +405,24 @@ const [layoutedData, setLayoutedData] = useState<GraphDataWithResolvedEdges>(pre
           validEdges={validEdges}
           mappedNodes={mappedNodes}
         />
+      )}
+
+      {/* DrawerPanel */}
+      {selectedNode && selectedNode.type === 'computer' && (
+        <ComputerDrawerPanel
+          computers={mappedNodes.filter((n: NodeType) => n.type === 'computer')}
+          selectedComputer={selectedNode}
+          outputJson={outputJson}
+          onSelectComputer={(node) => {
+            setSelectedNode(node);
+            graphRef.current?.centerNode(node.id);
+          }}
+          onSave={(updatedNode) => {
+            // implement your update logic
+            setSelectedNode(null);
+          }}
+          onCancel={() => setSelectedNode(null)}
+        />      
       )}
 
 

@@ -27,10 +27,12 @@ export default function JsonFileTable() {
   const [downloadFile, setDownloadFile] = useState<FileItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const { setGraphData } = useSession();
+  const { setGraphData, setOutputJson } = useSession();
 
   const userRole = localStorage.getItem('userRole');
 
+
+  
   const handleAddClick = () => {
     fileInputRef.current?.click();
   };
@@ -96,6 +98,8 @@ export default function JsonFileTable() {
       if (typeof event.target?.result === 'string') {
         try {
           const mainJson = JSON.parse(event.target.result);
+          console.log("✅ Setting outputJson", mainJson);
+          setOutputJson(mainJson);
           const inputJson = files.find(f => f.name.toLowerCase().includes('input'));
           let inputParsed = null;
 
@@ -116,6 +120,20 @@ export default function JsonFileTable() {
   };
 
   const handleViewAllInGraph = () => {
+    console.log("📂 Files in handleViewAllInGraph", files);
+    if (files.length > 0) {
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (typeof event.target?.result === 'string') {
+          const mainJson = JSON.parse(event.target.result);
+          console.log("✅ Setting outputJson from ViewAll", mainJson);
+          setOutputJson(mainJson);
+        }
+      };
+      reader.readAsText(file.fileObject);
+    }
+
     navigate('/viewer', {
       state: {
         mode: 'all',

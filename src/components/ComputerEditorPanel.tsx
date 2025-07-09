@@ -1,26 +1,3 @@
-/**
- * ComputerEditorPanel.tsx
- *
- * Vizualna komponenta za uređivanje podataka o čvorovima tipa "computer".
- * Omogućuje korisniku da izmijeni naziv računala, mrežu kojoj pripada i popis instaliranog softvera.
- *
- * Funkcionalnosti:
- * - Automatski dohvaća i prikazuje postojeće vrijednosti iz odabranog `NodeType` čvora.
- * - Omogućuje uređivanje naziva (`label`) i pripadnosti mreži (na temelju `network_ids`).
- * - Prikazuje i omogućuje uređivanje popisa softvera (`software`).
- * - Emitira ažurirani čvor pomoću `onSave` callbacka.
- *
- * Props:
- * - `node`: trenutno odabrani čvor koji se uređuje (mora biti tipa `computer`)
- * - `availableNetworks`: lista dostupnih mreža za odabir
- * - `onSave`: callback funkcija koja prima ažurirani čvor i pohranjuje ga
- * - `onCancel`: callback za zatvaranje panela bez spremanja promjena
- *
- * TODO:
- * - Dodati validaciju unosa (npr. mreža mora biti odabrana, softveri ne smiju biti prazni).
- * - Omogućiti dodavanje više mreža ako model bude to podržavao (`network_ids` kao array).
- */
-
 import React, { useState, useEffect } from 'react';
 import type { NodeType } from '../types';
 import styles from './ComputerEditorPanel.module.scss';
@@ -38,126 +15,194 @@ const ComputerEditorPanel: React.FC<ComputerEditorPanelProps> = ({
   onSave,
   onCancel
 }) => {
-  const [label, setLabel] = useState('');
-  const [software, setSoftware] = useState<string[]>([]);
-  const [editedNetwork, setEditedNetwork] = useState('');
-  const [showBackConfirm, setShowBackConfirm] = useState(false);
-  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+  const [activeTab, setActiveTab] = useState('general');
+  const [editedNode, setEditedNode] = useState<NodeType | null>(null);
 
   useEffect(() => {
-    if (node && node.type === 'computer') {
-      setLabel(node.label || '');
-      setSoftware((node.software as string[]) || []);
-
-      // Inicijaliziraj mrežu iz meta.network_ids
-      const rawNetworkId = node.meta?.network_ids?.[0];
-      setEditedNetwork(rawNetworkId !== undefined ? `network.internal.${rawNetworkId}` : '');
-    }
+    if (node) setEditedNode(node);
   }, [node]);
 
-  if (!node || node.type !== 'computer') return null;
+  if (!editedNode) return null;
 
-  const handleSoftwareChange = (index: number, value: string) => {
-    const newSoftware = [...software];
-    newSoftware[index] = value;
-    setSoftware(newSoftware);
+  const handleFieldChange = (field: string, value: any) => {
+    setEditedNode(prev => prev ? { ...prev, [field]: value } : prev);
   };
 
-  const handleAddSoftware = () => {
-    setSoftware([...software, '']);
-  };
+  // === General Tab ===
+  const renderGeneralTab = () => (
+    <div>
+      <h3>General Info</h3>
+      <label>
+        Computer Name:
+        <input
+          type="text"
+          value={editedNode.label || editedNode.id}
+          onChange={e => handleFieldChange('label', e.target.value)}
+        />
+      </label>
 
-  const handleRemoveSoftware = (index: number) => {
-    const newSoftware = [...software];
-    newSoftware.splice(index, 1);
-    setSoftware(newSoftware);
-  };
+      <label>
+        Network:
+        <select
+          value={editedNode.meta?.network_ids?.[0] || ''}
+          onChange={e => {
+            const netId = parseInt(e.target.value, 10);
+            setEditedNode(prev => prev ? {
+              ...prev,
+              meta: { ...(prev.meta || {}), network_ids: [netId] }
+            } : prev);
+          }}
+        >
+          <option value="">Select network</option>
+          {availableNetworks.map(net => (
+            <option key={net} value={net}>
+              {net}
+            </option>
+          ))}
+        </select>
+      </label>
 
-  const handleSave = () => {
-    onSave({
-      ...node,
-      label,
-      group: editedNetwork,
-      icon: node.icon,
-      software,
+      <p>Used Hardware Quota: {editedNode.meta?.originalComputer?.used_hardware_quota || 'N/A'}</p>
+    </div>
+  );
+
+  // === Data Tab ===
+  const renderDataTab = () => (
+    <div>
+      <h3>Data</h3>
+      {(editedNode.meta?.originalComputer?.data || []).map((d: string, idx: number) => (
+        <div key={idx} className={styles.itemBox}>
+          <p>{d}</p>
+          <button onClick={() => removeData(d)}>Delete</button>
+        </div>
+      ))}
+      <button onClick={addData}>Add Data</button>
+    </div>
+  );
+
+  const addData = () => {
+    const newData = [...(editedNode.meta?.originalComputer?.data || []), 'NewDataPlaceholder'];
+    setEditedNode(prev => prev ? {
+      ...prev,
       meta: {
-        ...node.meta,
-        network_ids: [
-          Number(editedNetwork.replace('network.internal.', ''))
-        ],
-        groupLabel: editedNetwork
+        ...(prev.meta || {}),
+        originalComputer: {
+          ...(prev.meta?.originalComputer || {}),
+          data: newData
+        }
       }
-    });
+    } : prev);
+  };
+
+  const removeData = (id: string) => {
+    const newData = (editedNode.meta?.originalComputer?.data || []).filter((d: string) => d !== id);
+    setEditedNode(prev => prev ? {
+      ...prev,
+      meta: {
+        ...(prev.meta || {}),
+        originalComputer: {
+          ...(prev.meta?.originalComputer || {}),
+          data: newData
+        }
+      }
+    } : prev);
+  };
+
+  // === Software Tab ===
+  const renderSoftwareTab = () => (
+    <div>
+      <h3>Installed Software</h3>
+      {Object.keys(editedNode.meta?.originalComputer?.installed_software || {}).map((softId, idx) => (
+        <div key={idx} className={styles.itemBox}>
+          <p>{softId}</p>
+          <button onClick={() => removeSoftware(softId)}>Delete</button>
+        </div>
+      ))}
+      <button onClick={addSoftware}>Add Software</button>
+    </div>
+  );
+
+  const addSoftware = () => {
+    // implementiraj logiku dodavanja softvera prema tvojim potrebama
+  };
+
+  const removeSoftware = (id: string) => {
+    const currentSoftware = editedNode.meta?.originalComputer?.installed_software || {};
+    const updated = { ...currentSoftware };
+    delete updated[id];
+    setEditedNode(prev => prev ? {
+      ...prev,
+      meta: {
+        ...(prev.meta || {}),
+        originalComputer: {
+          ...(prev.meta?.originalComputer || {}),
+          installed_software: updated
+        }
+      }
+    } : prev);
+  };
+
+  // === Credentials Tab ===
+  const renderCredentialsTab = () => (
+    <div>
+      <h3>Credentials</h3>
+      {(editedNode.meta?.originalComputer?.stored_credentials || []).map((cred: string, idx: number) => (
+        <div key={idx} className={styles.itemBox}>
+          <p>{cred}</p>
+          <button onClick={() => removeCredential(cred)}>Delete</button>
+        </div>
+      ))}
+      <button onClick={addCredential}>Add Credential</button>
+    </div>
+  );
+
+  const addCredential = () => {
+    const newCreds = [...(editedNode.meta?.originalComputer?.stored_credentials || []), 'NewCredentialPlaceholder'];
+    setEditedNode(prev => prev ? {
+      ...prev,
+      meta: {
+        ...(prev.meta || {}),
+        originalComputer: {
+          ...(prev.meta?.originalComputer || {}),
+          stored_credentials: newCreds
+        }
+      }
+    } : prev);
+  };
+
+  const removeCredential = (id: string) => {
+    const newCreds = (editedNode.meta?.originalComputer?.stored_credentials || []).filter((c: string) => c !== id);
+    setEditedNode(prev => prev ? {
+      ...prev,
+      meta: {
+        ...(prev.meta || {}),
+        originalComputer: {
+          ...(prev.meta?.originalComputer || {}),
+          stored_credentials: newCreds
+        }
+      }
+    } : prev);
   };
 
   return (
     <div className={styles.panel}>
-      {showBackConfirm && (
-        <div className={styles.modalBackdrop}>
-          <div className={styles.modal}>
-            <p>Are you sure you want to go back?<br />Unsaved changes will be lost.</p>
-            <div className={styles.modalButtons}>
-              <button onClick={onCancel}>Yes, go back</button>
-              <button onClick={() => setShowBackConfirm(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {showSaveConfirm && (
-  <div className={styles.modalBackdrop}>
-    <div className={styles.modal}>
-      <p>Are you sure you want to save the changes?</p>
-      <div className={styles.modalButtons}>
-        <button onClick={() => {
-          handleSave();
-          setShowSaveConfirm(false);
-        }}>Yes, save</button>
-        <button onClick={() => setShowSaveConfirm(false)}>Cancel</button>
+      <div className={styles.tabs}>
+        <button onClick={() => setActiveTab('general')}>General</button>
+        <button onClick={() => setActiveTab('data')}>Data</button>
+        <button onClick={() => setActiveTab('software')}>Software</button>
+        <button onClick={() => setActiveTab('credentials')}>Credentials</button>
       </div>
-    </div>
-  </div>
-)}
 
-      <h3>EDIT COMPUTER</h3>
-      <label>Computer name:</label>
-      <input
-        type="text"
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-      />
-
-      <label>Computer Network:</label>
-      <select
-        value={editedNetwork}
-        onChange={(e) => setEditedNetwork(e.target.value)}
-      >
-        <option value="">-- select network --</option>
-        {availableNetworks.map((net) => (
-          <option key={net} value={net}>
-            {net}
-          </option>
-        ))}
-      </select>
-
-      <label>INSTALLED SOFTWARE</label>
-      {software.map((sw, index) => (
-        <div key={index} className={styles.softwareItem}>
-          <input
-            type="text"
-            value={sw}
-            onChange={(e) => handleSoftwareChange(index, e.target.value)}
-          />
-          <button onClick={() => handleRemoveSoftware(index)}>X</button>
-        </div>
-      ))}
-
-      <button className={styles.addButton} onClick={handleAddSoftware}>
-        + ADD SOFTWARE
-      </button>
+      <div className={styles.tabContent}>
+        {activeTab === 'general' && renderGeneralTab()}
+        {activeTab === 'data' && renderDataTab()}
+        {activeTab === 'software' && renderSoftwareTab()}
+        {activeTab === 'credentials' && renderCredentialsTab()}
+      </div>
 
       <div className={styles.actions}>
-        <button onClick={() => setShowSaveConfirm(true)}>SAVE</button>
-        <button onClick={() => setShowBackConfirm(true)}>BACK</button>
+        <button onClick={() => onSave(editedNode)}>SAVE</button>
+        <button onClick={onCancel}>BACK</button>
       </div>
     </div>
   );

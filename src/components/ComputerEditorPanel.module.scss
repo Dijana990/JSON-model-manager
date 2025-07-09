@@ -1,7 +1,7 @@
 .panel {
   position: fixed;
   right: 10px;
-  top: 175px;
+  top: 30px;
   background: white;
   border: 1px solid #5B88B2;
   padding: 1rem;
@@ -180,4 +180,65 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
   }
+}
+
+/* Integracija za src/components/ComputerDrawerPanel.tsx */
+
+.resizeHandle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: ew-resize;
+  background: transparent;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 4px;
+  }
+
+  tbody tr:hover {
+    background: #f9f9f9;
+    cursor: pointer;
+  }
+}
+
+.selectedRow {
+  background: #f9b90e !important;
+}
+
+.drawerContent {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px); // prilagodi visini ekrana minus header, padding, itd.
+  overflow: hidden; // sprječava dupli scroll
+}
+
+.computersListContainer {
+  flex: 0 0 auto;
+  max-height: 200px; // visina liste computera
+  overflow-y: auto;
+}
+
+.tabs {
+  flex: 0 0 auto;
+  margin: 8px 0;
+}
+
+.tabContentScrollable {
+  flex: 1 1 auto; // zauzima preostali prostor
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.actions {
+  flex: 0 0 auto;
+  margin-top: 8px;
 }

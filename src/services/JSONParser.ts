@@ -6,7 +6,7 @@
  * Uključuje pomoćne funkcije za prepoznavanje softvera, korisnika, mreža i servisa.
  * Ključno za pretvaranje modeliranih IT sustava u vizualnu mrežu.
  */
-import type { GraphData, NodeType, EdgeType, Computer, Software } from '../types';
+import type { GraphData, NodeType, EdgeType, DetailedData } from '../types';
 
 
 // ✅ Nova pomoćna funkcija za grupiranje nodova po tipu i id-u
@@ -49,7 +49,7 @@ export function getBinaryLabel(sw: any): string {
   const source = name || cpe || idn;
 
   const normFull = source.toLowerCase();
-  console.log('getBinaryLabel input DEBUG', { name, cpe, idn, source });
+
   if (normFull.includes('windows_server_2016') || normFull.includes('windows server'))
     return 'Windows Server 2016';
   // ➔ Ako je Exchange Server bilo gdje u stringu, vrati ga odmah
@@ -131,16 +131,69 @@ function isUnwantedOperatingSystem(sw: any): boolean {
   return isOS && !hasUserServices && !isKnownServer;
 }
 
+export function getAvailableNetworksFromJson(outputJson: any): { id: string; label: string }[] {
+  if (!outputJson?.network_segments) return [];
+
+  return Object.keys(outputJson.network_segments).map(segmentId => ({
+    id: segmentId,
+    label: `Network ${segmentId}`
+  }));
+}
+
+
+export function mapComputerDataWithLinkedSoftware(
+  dataIds: string[],
+  outputJson: any
+): any[] {
+  console.log("🔧 mapComputerDataWithLinkedSoftware CALLED");
+  console.log("📥 dataIds:", dataIds);
+  console.log("📥 outputJson.data keys:", outputJson?.data ? Object.keys(outputJson.data) : "NO DATA"); 
+  if (!dataIds || !outputJson?.data) return [];
+
+  const result: DetailedData[] = [];
+
+  for (const dataId of dataIds) {
+    console.log("🔎 Looking for dataId:", dataId);
+    console.log("📂 Available data keys:", Object.keys(outputJson.data));
+    const dataEntry = outputJson.data[dataId];
+    if (!dataEntry)
+      console.log("❌ dataEntry not found for", dataId);
+      continue;
+
+      console.log("✅ dataEntry found:", dataEntry);
+
+    const linkedSoftware = (dataEntry.linked_software || []).map((lsId: string) => {
+      const [compId, softwareId] = lsId.split('>');
+      const software = outputJson.software?.[softwareId];
+
+      return {
+        computerId: compId,
+        softwareId,
+        name: software?.name || softwareId
+      };
+    });
+
+    result.push({
+      idn: dataEntry.idn,
+      data_type: dataEntry.data_type,
+      protection_level: dataEntry.protection_level,
+      person_groups: dataEntry.person_groups,
+      linked_software: linkedSoftware
+    });
+  }
+
+  console.log("✅ Final detailedData", result);
+  return result;
+}
+
+
 export function formatServerId(rawCompId: string): string {
-  console.log('🔎 formatServerId INPUT:', rawCompId);
 
   if (rawCompId.startsWith('None')) {
     const formatted = 'server.' + rawCompId.replace(/^None:/, '').replace(/:/g, '.');
-    console.log('✅ formatServerId OUTPUT:', formatted);
     return formatted;
   }
   const formatted = rawCompId.replace(/:/g, '.');
-  console.log('✅ formatServerId OUTPUT:', formatted);
   return formatted;
 }
 
@@ -231,7 +284,6 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
     if (!hasPerson && validSoftwareIds.length === 0 && !isServer) continue;
 
     if (!nodeIndex[compId]) {
-      console.log('🖥️ Creating computer node u jsonparser:', { compId, formatted: formatServerId(compId) });
       nodeIndex[compId] = {
         id: compId,
         label: compLabel,

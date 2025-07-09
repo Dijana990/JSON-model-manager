@@ -1,0 +1,68 @@
+.panel {
+  position: fixed;
+  right: 10px;
+  top: 30px;
+  background: white;
+  border: 1px solid #5B88B2;
+  padding: 1rem;
+  border-radius: 8px;
+  z-index: 1000;
+
+  width: 300px;
+
+  display: flex;
+  flex-direction: column;
+
+  height: auto; // omogući da raste ovisno o sadržaju
+  max-height: 90vh; // maksimalno 90% visine ekrana
+  overflow: hidden;
+
+  .headerButtons {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+  }
+
+  .computersListContainer {
+    flex-shrink: 0;
+    max-height: 150px; // prilagodi visini
+    overflow-y: auto;
+    margin-bottom: 0.5rem;
+  }
+
+  .tabs {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 0.5rem;
+  }
+  .scrollableContent {
+    flex: 1 1 auto; // rasteže se
+    overflow-y: auto; // omogućuje scroll
+    overflow-x: hidden;
+    padding-right: 8px;
+  }
+  .tabContentContainer {
+    flex: 1 1 auto;
+    overflow: hidden; // sprječava izlazak sadržaja
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tabContentScrollable {
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+
+  .actions {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+  }
+  table {
+    min-width: 100%; // osigurava da tablica zauzme širinu
+  }
+}

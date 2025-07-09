@@ -23,7 +23,10 @@ import { useState } from 'react';
 type SessionContextType = {
   graphData: GraphData; // Trenutni prikaz grafa (čvorovi + rubovi)
   setGraphData: (data: GraphData) => void; // Funkcija za ažuriranje grafa
+  outputJson: any;
+  setOutputJson: (data: any) => void;
 };
+
 // Početni (prazni) graf koji se koristi pri inicijalizaciji
 const defaultGraphData: GraphData = {
   nodes: [],
@@ -39,9 +42,10 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
  */
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
   const [graphData, setGraphData] = useState<GraphData>(defaultGraphData);
+  const [outputJson, setOutputJson] = useState<any>(null);
 
   return (
-    <SessionContext.Provider value={{ graphData, setGraphData }}>
+    <SessionContext.Provider value={{ graphData, setGraphData, outputJson, setOutputJson }}>
       {children}
     </SessionContext.Provider>
   );
