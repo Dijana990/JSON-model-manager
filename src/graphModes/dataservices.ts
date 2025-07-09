@@ -144,10 +144,6 @@ export function filterDataservicesGraph(
                     foundAtLeastOne = true; // ➔ ne prekidamo petlju, tražimo sve software na svim računalima
                 }
             }
-
-            if (!foundAtLeastOne) {
-                 console.warn(`Dataservice ${dsId} has linked_software ${swId} but no valid matching computer/software.`);
-            }
         }
 
         // 🔹 2.2 Veza dataservice ➔ principal_software (ako postoji i već je u grafu)

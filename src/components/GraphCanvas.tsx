@@ -126,9 +126,7 @@ const [layoutedData, setLayoutedData] = useState<GraphDataWithResolvedEdges>(pre
     const tgtId = typeof e.target === 'string' ? e.target : e.target?.id;
 
     const valid = nodeIds.has(srcId) && nodeIds.has(tgtId);
-    if (!valid) {
-      console.warn('Removing invalid edge with missing node', e);
-    }
+
     return valid;
   });
 
@@ -234,13 +232,6 @@ const [layoutedData, setLayoutedData] = useState<GraphDataWithResolvedEdges>(pre
     newSet.has(type) ? newSet.delete(type) : newSet.add(type);
     setSelectedTypes(newSet);
   };
-
-
-
-  const allNodesHaveGroup = mappedNodes.every(n => typeof n.group === 'string');
-  if (!allNodesHaveGroup) {
-    console.error('Neki nodeovi nemaju group property!');
-  }
 
   const { dynamicDistanceMin, dynamicCollideRadius, dynamicNodeStrength } =
     getDynamicLayoutConfig(selectedGroup, mappedNodes);

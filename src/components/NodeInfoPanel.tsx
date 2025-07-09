@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { NodeType, EdgeType } from '../types';
 import { parseCpe, getSoftwareUser, getSoftwareComputer, getServiceProvider, parseSoftwareIdFromUserServiceId } from '../utils/graphHelpers';
-import { cleanDuplicateLabel } from '../utils/graphHelpers';
+import { getNodeOriginalData, cleanUserId, cleanDuplicateLabel } from '../utils/graphHelpers';
 import { getConnectedNodes } from '../utils/common';
 import styles from './GraphCanvas.module.scss';
 
@@ -18,25 +18,23 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
   validEdges,
   mappedNodes
 }) => {
-  const [isIdVisible, setIsIdVisible] = useState(false);
 
-  const handleMouseEnter = () => setIsIdVisible(true);
-  const handleMouseLeave = () => setIsIdVisible(false);
+
+  const originalData = getNodeOriginalData(selectedNode);
 
   return (
     <div className={styles.nodePanel}>
-      <h3>{selectedNode.label}</h3>
+      <h3>{selectedNode.label || (selectedNode.type === 'key' ? 'Key' : selectedNode.type === 'lock' ? 'Lock' : selectedNode.id)}</h3>
       <p>
         <strong>ID:</strong>{' '}
         <span className={styles.nodeId}>
-          {selectedNode.fullName || selectedNode.id}
+          {['user', 'computer'].includes(selectedNode.type)
+            ? selectedNode.id.replace(/^user-/, '')
+            : originalData.id || selectedNode.id}
         </span>
       </p>
       <p><strong>TYPE:</strong> {selectedNode.type}</p>
-
-      {selectedNode.meta?.groupLabel && (
-        <p><strong>NETWORK:</strong> {selectedNode.meta.groupLabel}</p>
-      )}
+      <p><strong>NETWORK:</strong> {selectedNode.meta?.groupLabel || selectedNode.meta?.network_group || 'N/A'}</p>
 
       {viewMode === 'landscape' && (
         <>
@@ -55,10 +53,24 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                 </>
               )}
 
+              {selectedNode.type === 'user' && (
+                <>
+                  <p>👤 User Info:</p>
+                  <p><strong>Installed on computer:</strong> {selectedNode.meta?.computer_idn || 'Unknown'}</p>
+                  <p><strong>Network:</strong> {selectedNode.meta?.network_group || 'Unknown'}</p>
+                </>
+              )}
+
+
               {selectedNode.type === 'software' && (
                 <>
                   <p>💾 Software Info:</p>
-                  <p><strong>CPE:</strong> {selectedNode.meta?.cpe || 'N/A'}</p>
+                  <p className={styles.listItemWithTooltip}>
+                  <strong>CPE:</strong> {selectedNode.meta?.cpe || 'N/A'}
+                  <span className={styles.tooltip}>
+                    {selectedNode.meta?.cpe || 'N/A'}
+                  </span>
+                </p>
                   {(() => {
                     const cpeString = selectedNode.meta?.originalSoftware?.cpe_idn || '';
                     const { vendor, product, version } = parseCpe(cpeString);
@@ -71,7 +83,11 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     );
                   })()}
                   <p><strong>Installed on computer:</strong> {selectedNode.meta?.computer_idn || 'Unknown'}</p>
-                  <p><strong>Used by:</strong> {getSoftwareUser(selectedNode.id, validEdges) || 'N/A'}</p>
+                  <p><strong>Used by:</strong>{' '}
+                    {getSoftwareUser(selectedNode.id, validEdges)
+                      ? cleanUserId(getSoftwareUser(selectedNode.id, validEdges) as string)
+                      : 'N/A'}
+                  </p>
                 </>
               )}
 
@@ -91,7 +107,11 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       <>
                         <p><strong>Provided by:</strong> {softwareNode?.label || 'Unknown'}</p>
                         <p><strong>Installed on computer:</strong> {computerId || 'Unknown'}</p>
-                        {userId && <p><strong>Used by user:</strong> {userId}</p>}
+                        {userId && (
+                          <p>
+                            <strong>Used by user:</strong> {cleanUserId(userId)}
+                          </p>
+                        )}
                       </>
                     );
                   })()}
@@ -119,7 +139,11 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                           : 'Unknown'}
                         </p>
                         <p><strong>Installed on computer:</strong> {computerId || 'Unknown'}</p>
-                        {userId && <p><strong>Used by user:</strong> {userId}</p>}
+                        {userId && (
+                          <p>
+                            <strong>Used by user:</strong> {cleanUserId(userId)}
+                          </p>
+                        )}
                       </>
                     );
                   })()}
@@ -147,8 +171,8 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       nodeTypeFilter: ['user']
                     }).map(node => (
                       <li key={node.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        {node.id}
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ))}
                   </ul>
@@ -162,8 +186,7 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       nodeTypeFilter: ['computer']
                     }).map(node => (
                       <li key={node.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ))}
                   </ul>
@@ -177,8 +200,7 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       nodeTypeFilter: ['software']
                     }).map(node => (
                       <li key={node.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ))}
                   </ul>
@@ -196,8 +218,7 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       nodeTypeFilter: ['user']
                     }).map(node => (
                       <li key={node.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ))}
                   </ul>
@@ -211,8 +232,7 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       nodeTypeFilter: ['computer']
                     }).map(node => (
                       <li key={node.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ))}
                   </ul>
@@ -226,8 +246,7 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       nodeTypeFilter: ['software']
                     }).map(node => (
                       <li key={node.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ))}
                   </ul>
@@ -245,8 +264,7 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       nodeTypeFilter: ['key']
                     }).map(node => (
                       <li key={node.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ))}
                   </ul>
@@ -260,8 +278,7 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       nodeTypeFilter: ['lock']
                     }).map(node => (
                       <li key={node.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ))}
                   </ul>
@@ -279,8 +296,7 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       nodeTypeFilter: ['key']
                     }).map(node => (
                       <li key={node.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ))}
                   </ul>
@@ -294,8 +310,7 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                       nodeTypeFilter: ['lock']
                     }).map(node => (
                       <li key={node.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ))}
                   </ul>
@@ -324,8 +339,8 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     if (!node) return null;
                     return (
                       <li key={e.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        {node.id}
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     );
                   })}
@@ -354,8 +369,8 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     if (!node) return null;
                     return (
                       <li key={e.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        {node.id}
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     );
                   })}
@@ -367,7 +382,6 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
             <>
               <h4>💾 Software Info</h4>
               <p><strong>Installed on computer:</strong> {selectedNode.meta?.computerId || 'Unknown'}</p>
-              <p><strong>Network:</strong> {selectedNode.group || 'Unknown'}</p>
               <p><strong>User:</strong> {selectedNode.meta?.originalSoftware?.person_group_id || 'N/A'}</p>
 
               <p><strong>Dataservices:</strong></p>
@@ -379,8 +393,8 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     if (!node) return null;
                     return (
                       <li key={e.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        {node.id}
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     );
                   })}
@@ -396,9 +410,6 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
           {selectedNode.type === 'internet' && (
             <>
               <h4>🌐 Internet Info</h4>
-              <p><strong>ID:</strong> {selectedNode.id}</p>
-              <p><strong>TYPE:</strong> Internet</p>
-
               <p><strong>Outbound Connections:</strong></p>
               <ul>
                 {validEdges
@@ -407,8 +418,8 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     const node = mappedNodes.find(n => n.id === e.target);
                     return node ? (
                       <li key={e.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        {node.id}
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ) : null;
                   })}
@@ -422,8 +433,8 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     const node = mappedNodes.find(n => n.id === e.source);
                     return node ? (
                       <li key={e.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        {node.id}
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ) : null;
                   })}
@@ -444,8 +455,8 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     const node = mappedNodes.find(n => n.id === e.target);
                     return node ? (
                       <li key={e.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        {node.id}
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ) : null;
                   })}
@@ -459,8 +470,8 @@ const NodeInfoPanel: React.FC<NodeInfoPanelProps> = ({
                     const node = mappedNodes.find(n => n.id === e.source);
                     return node ? (
                       <li key={e.id} className={styles.listItemWithTooltip}>
-                        {node.label || node.id}
-                        <span className={styles.tooltip}>{node.fullName || node.id}</span>
+                        {node.id}
+                        <span className={styles.tooltip}>{node.id}</span>
                       </li>
                     ) : null;
                   })}

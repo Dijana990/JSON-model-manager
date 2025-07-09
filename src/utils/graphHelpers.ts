@@ -160,3 +160,70 @@ export function extractUserIdFromSwId(swId: string): string | null {
   if (swId.startsWith('None')) return null;
   return swId.split('>')[0] || null;
 }
+
+export function getNodeOriginalData(node: NodeType) {
+  if (!node) return {};
+
+  switch (node.type) {
+    case 'software':
+      return {
+        id: node.meta?.originalSoftware?.idn || node.id,
+        name: node.meta?.originalSoftware?.name || node.label || node.id,
+        cpe: node.meta?.originalSoftware?.cpe_idn || 'N/A',
+        version: node.meta?.originalSoftware?.version || 'N/A',
+        computer_idn: node.meta?.computer_idn || 'Unknown',
+        raw: node.meta?.originalSoftware || null
+      };
+
+    case 'service':
+      return {
+        id: node.meta?.originalService?.idn || node.id,
+        name: node.meta?.originalService?.name || node.label || node.id,
+        type: 'service',
+        raw: node.meta?.originalService || null
+      };
+
+    case 'user-service':
+      return {
+        id: node.meta?.originalSoftware?.idn || node.id,
+        name: node.meta?.originalSoftware?.name || node.label || node.id,
+        user_id: node.meta?.originalSoftware?.person_group_id || 'N/A',
+        computer_idn: node.meta?.computer_idn || 'Unknown',
+        raw: node.meta?.originalSoftware || null
+      };
+
+    case 'computer':
+      return {
+        id: node.id, // koristi čisti ID
+        name: node.meta?.originalComputer?.name || node.label || node.id,
+        network_ids: node.meta?.originalComputer?.network_idn || [],
+        raw: node.meta?.originalComputer || null
+      };
+
+    case 'user':
+      return {
+        id: node.id.replace(/^user-/, ''), // makni "user-" prefix
+        name: node.label || node.id.replace(/^user-/, ''),
+        raw: node.meta?.originalUser || null
+      };
+
+    case 'key':
+    case 'lock':
+      return {
+        id: node.meta?.originalCredential?.idn || node.id,
+        name: node.meta?.originalCredential?.name || node.label || node.id,
+        raw: node.meta?.originalCredential || null
+      };
+
+    default:
+      return {
+        id: node.id,
+        name: node.label || node.id,
+        raw: null
+      };
+  }
+}
+
+export function cleanUserId(id: string): string {
+  return id.replace(/^user-/, '');
+}

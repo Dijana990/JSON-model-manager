@@ -30,7 +30,6 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       const item = localStorage.getItem(key); // pokušaj dohvatiti spremljeni podatak
       return item ? JSON.parse(item) : initialValue; // ako postoji, parsiraj ga; inače koristi početnu vrijednost
     } catch (error) {
-      console.warn('Error reading localStorage key:', key); // fallback u slučaju greške
       return initialValue;
     }
   });

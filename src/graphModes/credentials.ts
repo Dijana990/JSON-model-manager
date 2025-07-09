@@ -82,7 +82,14 @@ export function filterCredentialsGraph(
         credentialGroup: 'credentials' // oznaka za stilizaciju ili filtere
       }
     };
-
+    if (nodeIndex[credId]) {
+      console.warn('⚠️ DUPLICATE NODE DETECTED (credential):', {
+        id: credId,
+        label: credNode.label,
+        type: credNode.type,
+        prev: nodeIndex[credId]
+      });
+    }
     nodes.push(credNode);
     nodeIndex[credId] = credNode;
 
@@ -92,6 +99,14 @@ export function filterCredentialsGraph(
         const empId = Array.isArray(emp) ? emp[0] : emp;
         if (!empId) continue;
 
+        if (nodeIndex[empId]) {
+          console.warn('⚠️ DUPLICATE NODE DETECTED (user):', {
+            id: empId,
+            label: empId,
+            type: 'user',
+            prev: nodeIndex[empId]
+          });
+        }
         if (!nodeIndex[empId]) {
           const empNode: NodeType = {
             id: empId,
@@ -101,6 +116,14 @@ export function filterCredentialsGraph(
             icon: '/icons/user.png',
             group: ''
           };
+          if (nodeIndex[empId]) {
+            console.warn('⚠️ DUPLICATE NODE DETECTED (user):', {
+              id: empId,
+              label: empId,
+              type: 'user',
+              prev: nodeIndex[empId]
+            });
+          }
           nodes.push(empNode);
           nodeIndex[empId] = empNode;
         }
@@ -131,6 +154,14 @@ export function filterCredentialsGraph(
       const networkIds = comp?.network_idn || [];
       const credGroup = networkIds.length > 0 ? `network.internal.${networkIds.join('_')}` : 'no-network';
 
+      if (nodeIndex[compId]) {
+        console.warn('⚠️ DUPLICATE NODE DETECTED (computer):', {
+          id: compId,
+          label: formatServerId(compId),
+          type: 'computer',
+          prev: nodeIndex[compId]
+        });
+      }
       if (!nodeIndex[compId]) {
         const compNode: NodeType = {
           id: compId,
@@ -140,9 +171,17 @@ export function filterCredentialsGraph(
           icon: '/icons/computer.png',
           group: credGroup
         };
+        if (nodeIndex[compId]) {
+          console.warn('⚠️ DUPLICATE NODE DETECTED (computer):', {
+            id: compId,
+            label: formatServerId(compId),
+            type: 'computer',
+            prev: nodeIndex[compId]
+          });
+        }
         nodes.push(compNode);
         nodeIndex[compId] = compNode;
-      }
+      } 
 
       if (!edgeExists(edges, credId, compId)) {
         edges.push({
@@ -164,29 +203,44 @@ export function filterCredentialsGraph(
       if (!installedSw || Number(installedSw.person_index) !== 0) continue;
 
       const normalizedLabel = getBinaryLabel(installedSw) || swId;
-      const softwareNodeId = compId + "_" + normalizedLabel; // unique per computer + software
 
       const networkIds = comp?.network_idn || [];
       const swGroup = networkIds.length > 0 ? `network.internal.${networkIds.join('_')}` : 'no-network';
-
-      if (!nodeIndex[softwareNodeId]) {
+      
+      if (nodeIndex[swId]) {
+        console.warn('⚠️ DUPLICATE NODE DETECTED (software):', {
+          id: swId,
+          label: normalizedLabel,
+          type: 'software',
+          prev: nodeIndex[swId]
+        });
+      }
+      if (!nodeIndex[swId]) {
         const swNode: NodeType = {
-          id: softwareNodeId, 
+          id: swId, 
           label: normalizedLabel,
           fullName: swId,
           type: 'software',
           icon: '/icons/binary.png',
           group: swGroup
         };
+        if (nodeIndex[swId]) {
+          console.warn('⚠️ DUPLICATE NODE DETECTED (software):', {
+            id: swId,
+            label: normalizedLabel,
+            type: 'software',
+            prev: nodeIndex[swId]
+          });
+        }
         nodes.push(swNode);
-        nodeIndex[softwareNodeId] = swNode;
+        nodeIndex[swId] = swNode;
       }
 
-      if (!edgeExists(edges, credId, softwareNodeId)) {
+      if (!edgeExists(edges, credId, swId)) {
         edges.push({
-          id: `edge-${credId}-${softwareNodeId}`,
+          id: `edge-${credId}-${swId}`,
           source: credId,
-          target: softwareNodeId,
+          target: swId,
           type: 'credential-software'
         });
       }
@@ -265,5 +319,7 @@ export function filterCredentialsGraph(
     
   // 🔹 Filter final output
   const filtered = filterGraphCredentialsCustom({ nodes, edges }, selectedGroup);
+  console.log('🔚 FINAL NODES:', nodes.map(n => ({ id: n.id, label: n.label, type: n.type })));
+  console.log('🔚 FINAL EDGES:', edges.map(e => ({ id: e.id, source: e.source, target: e.target, type: e.type })));
   return filtered;
 }

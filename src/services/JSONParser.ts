@@ -42,15 +42,19 @@ export function getCustomerLabel(binaryLabel: string): string {
 }
 
 export function getBinaryLabel(sw: any): string {
+  
   let name = sw?.name?.trim() || '';
   const cpe = sw?.cpe_idn || '';
   const idn = sw?.idn || '';
   const source = name || cpe || idn;
 
   const normFull = source.toLowerCase();
-
+  console.log('getBinaryLabel input DEBUG', { name, cpe, idn, source });
+  if (normFull.includes('windows_server_2016') || normFull.includes('windows server'))
+    return 'Windows Server 2016';
   // ➔ Ako je Exchange Server bilo gdje u stringu, vrati ga odmah
   if (normFull.includes('exchange_server') || normFull.includes('exchange server'))
+    
     return 'Exchange Server';
 
   let extracted = source.split(/[:\/]/).pop() || source;
@@ -128,12 +132,17 @@ function isUnwantedOperatingSystem(sw: any): boolean {
 }
 
 export function formatServerId(rawCompId: string): string {
-  if (rawCompId.startsWith('None')) {
-    return 'server.' + rawCompId.replace(/^None:/, '').replace(/:/g, '.');
-  }
-  return rawCompId.replace(/:/g, '.');
-}
+  console.log('🔎 formatServerId INPUT:', rawCompId);
 
+  if (rawCompId.startsWith('None')) {
+    const formatted = 'server.' + rawCompId.replace(/^None:/, '').replace(/:/g, '.');
+    console.log('✅ formatServerId OUTPUT:', formatted);
+    return formatted;
+  }
+  const formatted = rawCompId.replace(/:/g, '.');
+  console.log('✅ formatServerId OUTPUT:', formatted);
+  return formatted;
+}
 
 export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystems = false): GraphData {
   if (!json?.computers || typeof json.computers !== 'object') {
@@ -222,6 +231,7 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
     if (!hasPerson && validSoftwareIds.length === 0 && !isServer) continue;
 
     if (!nodeIndex[compId]) {
+      console.log('🖥️ Creating computer node u jsonparser:', { compId, formatted: formatServerId(compId) });
       nodeIndex[compId] = {
         id: compId,
         label: compLabel,
@@ -253,7 +263,9 @@ export function parseJSONToGraph(json: any, inputJson?: any, showOperatingSystem
           icon: '/icons/user.png',
           group: networkGroup,
           meta: {
-            originalUser: personId
+            originalUser: personId,
+            computer_idn: compId,
+            network_group: networkGroup 
           }
         };
         nodes.push(nodeIndex[userNodeId]);
