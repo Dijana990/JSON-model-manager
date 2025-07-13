@@ -11,7 +11,7 @@ The application provides the following features:
   - Editing its installed software and data (table view)
   - Changing its connected network
 - Update the graphical view after making edits
-- Save modified JSON files back to the server
+- Save modified JSON files 
 
 
 ## 🛠️ Technologies & Stack
@@ -23,8 +23,7 @@ The application provides the following features:
 - **Axios** – HTTP client for data requests  
 - **Three.js** – 3D rendering and interactive graphics  
 - **Vanta.js** – Animated 3D backgrounds for a dynamic user experience  
-- **Jest & Testing Library** – Unit and component testing for robust code  
-- **web-vitals** – Monitoring and measuring app performance
+
 
 ## ⚡️ Getting Started
 1. Clone the repository:
